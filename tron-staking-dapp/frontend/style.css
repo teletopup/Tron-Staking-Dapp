@@ -119,6 +119,7 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+  min-width: 0;
 }
 
 .stat {
@@ -205,11 +206,13 @@ body {
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-top: 14px;
+  min-width: 0;
 }
 
 .btn {
   appearance: none;
   border: 1px solid var(--border);
+  min-width: 0;
   background: var(--bg-elev-2);
   color: var(--text);
   font-size: 14px;
@@ -362,19 +365,21 @@ body {
 @media (max-width: 720px) {
   .container {
     margin: 20px auto;
-    padding: 0 14px;
+    padding: 0 12px;
   }
   .card {
-    padding: 18px 16px 16px;
+    padding: 18px 14px 14px;
   }
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
   .stat-wide {
     grid-column: span 2;
   }
   .btn-row {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
   #connectBtn {
     font-size: 13px;
@@ -382,9 +387,15 @@ body {
   }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 480px) {
   .topbar {
-    padding: 12px 14px;
+    padding: 12px 12px;
+  }
+  .container {
+    padding: 0 10px;
+  }
+  .card {
+    padding: 16px 12px 12px;
   }
   .stats-grid {
     grid-template-columns: 1fr;
@@ -393,9 +404,21 @@ body {
     grid-column: span 1;
   }
   .btn-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
   .stat-value {
     font-size: 16px;
+  }
+  .amount-row {
+    padding: 9px 12px;
+    gap: 6px;
+  }
+  #amountInput {
+    font-size: 16px;
+  }
+  .btn {
+    padding: 11px 12px;
+    font-size: 13px;
   }
 }

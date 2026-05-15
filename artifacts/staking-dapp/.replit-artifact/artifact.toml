@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "JST Staking dApp"
+version = "1.0.0"
+id = "artifacts/staking-dapp"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21287
+
+[services.development]
+run = "pnpm --filter @workspace/staking-dapp run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/staking-dapp", "run", "build" ]
+publicDir = "artifacts/staking-dapp/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21287"
+BASE_PATH = "/"

@@ -44,13 +44,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 28px;
+  gap: 12px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border);
   background: rgba(11, 13, 18, 0.7);
   backdrop-filter: blur(8px);
   position: sticky;
   top: 0;
   z-index: 5;
+  flex-wrap: wrap;
 }
 
 .brand {
@@ -59,6 +61,12 @@ body {
   gap: 10px;
   font-weight: 600;
   letter-spacing: 0.2px;
+  min-width: 0;
+}
+
+.brand-name {
+  font-size: 16px;
+  white-space: nowrap;
 }
 
 .logo-dot {
@@ -67,10 +75,6 @@ body {
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   box-shadow: 0 0 12px rgba(110, 231, 183, 0.6);
-}
-
-.brand-name {
-  font-size: 16px;
 }
 
 .net-badge {
@@ -343,7 +347,14 @@ body {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
+  .container {
+    margin: 20px auto;
+    padding: 0 14px;
+  }
+  .card {
+    padding: 18px 16px 16px;
+  }
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -352,5 +363,27 @@ body {
   }
   .btn-row {
     grid-template-columns: repeat(2, 1fr);
+  }
+  #connectBtn {
+    font-size: 13px;
+    padding: 9px 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .topbar {
+    padding: 12px 14px;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .stat-wide {
+    grid-column: span 1;
+  }
+  .btn-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .stat-value {
+    font-size: 16px;
   }
 }

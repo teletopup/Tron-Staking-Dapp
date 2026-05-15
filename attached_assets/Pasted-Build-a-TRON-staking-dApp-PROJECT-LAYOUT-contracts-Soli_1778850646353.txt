@@ -1,0 +1,56 @@
+Build a TRON staking dApp.
+
+PROJECT LAYOUT:
+- /contracts — Solidity contracts
+- /migrations — TronBox deployment scripts
+- /frontend — HTML + vanilla JS using TronWeb
+- tronbox.js, package.json, README.md, .env.example, .gitignore
+
+SMART CONTRACT (contracts/Staking.sol):
+- Solidity 0.8.18
+- OpenZeppelin: IERC20, Ownable, ReentrancyGuard, Pausable, SafeERC20
+- Single token: users stake JST and earn JST rewards (same token model)
+- For local testing, also generate contracts/MockJST.sol — a mintable TRC-20 for Nile testnet
+- Reward model: fixed APR of 12%, calculated per second
+- Lock period: 7 days minimum from last stake
+- Early withdrawal: allowed but forfeits pending rewards
+
+FUNCTIONS:
+- stake(uint256 amount) nonReentrant whenNotPaused
+- unstake(uint256 amount) nonReentrant — checks lock, distributes rewards if past lock, forfeits if early
+- claimRewards() nonReentrant — only if past lock period
+- pendingRewards(address user) public view returns (uint256)
+- fundRewardPool(uint256 amount) onlyOwner
+- withdrawUnusedRewards(uint256 amount) onlyOwner — can ONLY pull from rewardPool balance, never from staked principal (enforce with totalStaked tracking)
+- setAPR(uint256 newAprBps) onlyOwner — require newAprBps <= 5000 (50% max)
+- pause() / unpause() onlyOwner
+- Events: Staked, Unstaked, RewardClaimed, RewardsForfeited, RewardPoolFunded, APRUpdated
+
+INVARIANT: contract balance >= totalStaked + unclaimedRewards at all times.
+
+FRONTEND (frontend/index.html, frontend/app.js, frontend/style.css):
+- Dark theme, clean simple layout
+- Header with "Connect TronLink" button — shows truncated address when connected
+- Stats card: Your Balance, Staked, Pending Rewards, APR, Lock Remaining
+- Action card: amount input + 4 buttons (Approve, Stake, Unstake, Claim)
+- Approve button uses uint256.max for unlimited approval, with a warning tooltip
+- Auto-refresh stats every 10 seconds
+- Toast notifications for tx status with TronScan link
+- Detect if TronLink is not installed, show install prompt
+- Read contract address and ABI from a config.js file
+
+DEPLOYMENT:
+- tronbox.js with networks: nile (https://api.nileex.io), mainnet (https://api.trongrid.io), development
+- migrations/2_deploy_staking.js — deploys MockJST first on testnet, then Staking pointing at it
+- Read PRIVATE_KEY_NILE / PRIVATE_KEY_MAINNET from .env
+- package.json scripts: compile, migrate:nile, migrate:mainnet, console:nile
+
+README.md must include:
+- Prerequisites (Node 18+, TronLink, test TRX faucet links)
+- Install steps
+- How to deploy to Nile
+- How to verify the contract on TronScan
+- Security checklist: never share private key, audit before mainnet, test all flows on Nile first
+- Warning that unlimited approval means users trust the contract — they should review code
+
+Generate every file completely. No placeholders, no "TODO" stubs. Working code.

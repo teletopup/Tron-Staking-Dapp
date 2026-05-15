@@ -1,0 +1,23 @@
+{
+  "name": "tron-staking-dapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TRON staking dApp — JST staking with fixed APR, 7-day lock, vanilla JS frontend.",
+  "scripts": {
+    "compile": "tronbox compile",
+    "migrate:nile": "tronbox migrate --network nile --reset",
+    "migrate:mainnet": "tronbox migrate --network mainnet",
+    "console:nile": "tronbox console --network nile",
+    "frontend": "npx --yes serve frontend -l 5173"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "4.9.6",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "tronbox": "^3.4.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

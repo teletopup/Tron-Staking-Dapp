@@ -18,12 +18,14 @@ is allowed but forfeits any pending rewards.
 ```
 tron-staking-dapp/
 ├── contracts/
-│   ├── Staking.sol        # Main staking contract
+│   ├── Staking.sol        # Main staking contract (UUPS upgradeable)
+│   ├── StakingProxy.sol   # ERC1967 proxy wrapper
 │   ├── MockJST.sol        # Test TRC-20 (Nile only)
 │   └── Migrations.sol     # TronBox migration tracker
 ├── migrations/
 │   ├── 1_initial_migration.js
-│   └── 2_deploy_staking.js
+│   ├── 2_deploy_staking.js
+│   └── 3_upgrade_staking.js  # Disabled by default; enable to upgrade
 ├── frontend/
 │   ├── index.html
 │   ├── style.css
@@ -80,12 +82,16 @@ Compiled artifacts are written to `./build/contracts/`.
    npm run migrate:nile
    ```
 
-4. The output will print two addresses — copy them into `frontend/config.js`:
+4. The output will print three addresses (token, implementation, proxy).
+   Copy them into `frontend/config.js`:
 
    ```js
-   STAKING_ADDRESS: "T...",   // address printed for "Deployed Staking at:"
-   TOKEN_ADDRESS:   "T...",   // address printed for "Deployed MockJST at:"
+   STAKING_ADDRESS: "T...",   // ⚠️ use the PROXY address (printed as "Deployed StakingProxy at")
+   TOKEN_ADDRESS:   "T...",   // address printed for "Deployed MockJST at"
    ```
+
+   The implementation address is only used for upgrades — never call it
+   directly.
 
 5. Fund the reward pool so users can earn rewards. From `npm run console:nile`:
 
@@ -168,8 +174,38 @@ After deployment, the deployer (owner) can:
 - `withdrawUnusedRewards(amount)` — pull from the reward pool only. The contract
   enforces that withdrawals can never touch staked principal or rewards already
   accrued to users.
-- `setAPR(newAprBps)` — change APR; capped at 5000 bps (50%).
+- `setAPR(newAprBps)` — change APR; capped at 5000 bps (50%). Past time is
+  not re-priced; the new rate applies only going forward.
+- `setLockPeriod(newLockPeriod)` — change the lock window; capped at 365 days.
 - `pause()` / `unpause()` — pauses new stakes; unstake/claim remain available.
+- `upgradeTo(newImplementation)` — upgrade the contract logic (UUPS).
+
+## Upgrading the contract
+
+The `Staking` contract is deployed behind a UUPS proxy (`StakingProxy`). The
+**proxy address** is what users interact with and what you put in
+`frontend/config.js` as `STAKING_ADDRESS`. Upgrading swaps the implementation
+behind that proxy — the address, balances, and storage stay the same.
+
+To upgrade:
+
+1. Edit `contracts/Staking.sol` (or create `StakingV2.sol` inheriting it) and
+   bump `version()`.
+2. **Storage rules — read carefully:**
+   - Never reorder existing state variables.
+   - Never insert new variables in the middle.
+   - Only **append** new variables at the end of the storage block, and
+     decrement `__gap` by the number of slots you used.
+3. Run the upgrade migration. Open `migrations/3_upgrade_staking.js`, remove
+   the `return;` line, then:
+   ```bash
+   STAKING_PROXY=T<your-proxy-address> npx tronbox migrate --network nile --f 3 --to 3
+   ```
+4. Verify by reading `version()` from the proxy address — it should return the
+   new value.
+
+Only the contract owner can call `upgradeTo`. Use a multisig owner for any
+non-trivial deployment.
 
 ---
 

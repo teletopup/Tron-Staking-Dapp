@@ -1,77 +1,80 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
- * @title Staking
+ * @title Staking (UUPS upgradeable)
  * @notice Single-token staking: users stake JST and earn JST rewards.
+ *
+ * Upgradeability:
+ *  - UUPS proxy pattern. The owner is the only address allowed to authorize
+ *    an upgrade (`_authorizeUpgrade`).
+ *  - Storage layout MUST remain append-only across upgrades. To safely add
+ *    new fields later, append them at the END of the contract — never insert
+ *    in the middle, never reorder. A `__gap` slot reserve is included.
  *
  * Design:
  *  - Fixed APR in basis points (e.g. 1200 = 12%) accrued per second.
- *  - APR can be changed by the owner. To avoid retroactively re-pricing past
- *    time at a new rate, we use a Synthetix-style global reward index
- *    (`rewardPerTokenStored`). Every state-changing call settles the index up
- *    to `block.timestamp`, so APR changes only affect time AFTER the change.
- *  - 7-day lock from the most recent stake. `claimRewards` requires the lock
- *    to be over. `unstake` is always allowed for principal; rewards are paid
- *    only if the lock has elapsed, otherwise they are forfeited.
- *  - Owner can fund and withdraw the reward pool, but `withdrawUnusedRewards`
- *    enforces that the contract's token balance after the withdrawal still
- *    covers `totalStaked + unclaimedRewards` (settled to the current block).
- *  - When the reward pool is short, `claim`/`unstake` will not revert: any
- *    unpaid portion is left as `rewards[user]` and remains claimable once
- *    the owner refills the pool.
+ *  - APR uses a Synthetix-style global reward index so APR changes never
+ *    re-price past time.
+ *  - Lock period (default 7 days) is configurable by the owner.
+ *  - `unstake` always allows principal exit; rewards are paid only if past
+ *    lock and only up to what the reward pool can cover. Any unpaid amount
+ *    remains claimable later.
+ *  - Owner can fund/withdraw the reward pool but `withdrawUnusedRewards`
+ *    enforces `balance >= totalStaked + unclaimedRewards` after settlement.
  *
  * Invariant (enforced):
  *   tokenBalance(this) >= totalStaked + unclaimedRewards
  */
-contract Staking is Ownable, ReentrancyGuard, Pausable {
-    using SafeERC20 for IERC20;
+contract Staking is
+    Initializable,
+    OwnableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable,
+    UUPSUpgradeable
+{
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // ---------------------------------------------------------------------
-    // Constants
+    // Constants (fine for upgradeable contracts — they live in code, not storage)
     // ---------------------------------------------------------------------
 
-    uint256 public constant LOCK_PERIOD = 7 days;
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant MAX_APR_BPS = 5_000; // 50%
     uint256 public constant SECONDS_PER_YEAR = 365 days;
+    uint256 public constant MAX_LOCK_PERIOD = 365 days;
     uint256 private constant INDEX_PRECISION = 1e18;
 
     // ---------------------------------------------------------------------
-    // State
+    // Storage  ── APPEND-ONLY. Never reorder. Use __gap for future fields.
     // ---------------------------------------------------------------------
 
-    IERC20 public immutable stakingToken;
-
-    /// @notice Current APR in basis points (e.g. 1200 = 12%).
+    IERC20Upgradeable public stakingToken;
     uint256 public aprBps;
+    uint256 public lockPeriod;
 
-    /// @notice Sum of all staked principal. Owner withdraws cannot touch this.
     uint256 public totalStaked;
-
-    /// @notice Available reward pool funded by the owner.
     uint256 public rewardPool;
-
-    /// @notice Outstanding rewards already accrued and owed to stakers,
-    ///         settled up to `lastUpdateTime`.
     uint256 public unclaimedRewards;
 
-    /// @notice Cumulative rewards-per-token, scaled by 1e18.
-    uint256 public rewardPerTokenStored;
-
-    /// @notice Timestamp of last global index update.
+    uint256 public rewardPerTokenStored; // scaled by 1e18
     uint256 public lastUpdateTime;
 
     mapping(address => uint256) public stakedAmount;
     mapping(address => uint256) public lastStakeTime;
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
+
+    /// @dev Reserved storage slots so future upgrades can add fields safely.
+    uint256[40] private __gap;
 
     // ---------------------------------------------------------------------
     // Events
@@ -84,37 +87,56 @@ contract Staking is Ownable, ReentrancyGuard, Pausable {
     event RewardPoolFunded(address indexed funder, uint256 amount, uint256 newPool);
     event RewardPoolWithdrawn(address indexed to, uint256 amount, uint256 newPool);
     event APRUpdated(uint256 oldAprBps, uint256 newAprBps);
+    event LockPeriodUpdated(uint256 oldLockPeriod, uint256 newLockPeriod);
 
     // ---------------------------------------------------------------------
-    // Constructor
+    // Initializer (replaces constructor for upgradeable contracts)
     // ---------------------------------------------------------------------
 
-    constructor(address _stakingToken, uint256 _aprBps) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address _stakingToken, uint256 _aprBps)
+        external
+        initializer
+    {
         require(_stakingToken != address(0), "Staking: token=0");
         require(_aprBps <= MAX_APR_BPS, "Staking: APR too high");
-        stakingToken = IERC20(_stakingToken);
+
+        __Ownable_init();
+        __ReentrancyGuard_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
+
+        stakingToken = IERC20Upgradeable(_stakingToken);
         aprBps = _aprBps;
+        lockPeriod = 7 days;
         lastUpdateTime = block.timestamp;
+    }
+
+    /// @notice Only the owner can authorize an upgrade.
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    /// @notice Returns the implementation version. Bump this in upgrades.
+    function version() external pure virtual returns (string memory) {
+        return "1.0.0";
     }
 
     // ---------------------------------------------------------------------
     // Index math
     // ---------------------------------------------------------------------
 
-    /// @notice Live reward-per-token accumulator, scaled by 1e18.
     function rewardPerToken() public view returns (uint256) {
-        if (totalStaked == 0) {
-            return rewardPerTokenStored;
-        }
+        if (totalStaked == 0) return rewardPerTokenStored;
         uint256 dt = block.timestamp - lastUpdateTime;
         if (dt == 0) return rewardPerTokenStored;
-        // delta per token = dt * aprBps * 1e18 / (BPS * SECONDS_PER_YEAR)
         uint256 delta = (dt * aprBps * INDEX_PRECISION) /
             (BPS_DENOMINATOR * SECONDS_PER_YEAR);
         return rewardPerTokenStored + delta;
     }
 
-    /// @notice Total rewards owed to `user`, including currently accruing.
     function earned(address user) public view returns (uint256) {
         uint256 rpt = rewardPerToken();
         uint256 accrued = (stakedAmount[user] *
@@ -122,43 +144,32 @@ contract Staking is Ownable, ReentrancyGuard, Pausable {
         return rewards[user] + accrued;
     }
 
-    /// @notice Backwards-compatible alias used by the frontend.
     function pendingRewards(address user) external view returns (uint256) {
         return earned(user);
     }
 
-    /// @notice Settle the global index up to `block.timestamp`.
     function _updateGlobal() internal {
         uint256 newRpt = rewardPerToken();
         if (newRpt != rewardPerTokenStored) {
-            // Newly settled liability since last update.
             uint256 newAccrued = (totalStaked *
                 (newRpt - rewardPerTokenStored)) / INDEX_PRECISION;
-            if (newAccrued > 0) {
-                unclaimedRewards += newAccrued;
-            }
+            if (newAccrued > 0) unclaimedRewards += newAccrued;
             rewardPerTokenStored = newRpt;
         }
         lastUpdateTime = block.timestamp;
     }
 
-    /// @notice Settle a user's rewards up to `block.timestamp`.
-    ///         Caller must `_updateGlobal()` first.
     function _settleUser(address user) internal {
-        uint256 rpt = rewardPerTokenStored;
         uint256 accrued = (stakedAmount[user] *
-            (rpt - userRewardPerTokenPaid[user])) / INDEX_PRECISION;
-        if (accrued > 0) {
-            rewards[user] += accrued;
-        }
-        userRewardPerTokenPaid[user] = rpt;
+            (rewardPerTokenStored - userRewardPerTokenPaid[user])) /
+            INDEX_PRECISION;
+        if (accrued > 0) rewards[user] += accrued;
+        userRewardPerTokenPaid[user] = rewardPerTokenStored;
     }
 
     modifier updateReward(address user) {
         _updateGlobal();
-        if (user != address(0)) {
-            _settleUser(user);
-        }
+        if (user != address(0)) _settleUser(user);
         _;
     }
 
@@ -168,13 +179,18 @@ contract Staking is Ownable, ReentrancyGuard, Pausable {
 
     function lockRemaining(address user) external view returns (uint256) {
         if (stakedAmount[user] == 0) return 0;
-        uint256 unlockAt = lastStakeTime[user] + LOCK_PERIOD;
+        uint256 unlockAt = lastStakeTime[user] + lockPeriod;
         if (block.timestamp >= unlockAt) return 0;
         return unlockAt - block.timestamp;
     }
 
     function stakedOf(address user) external view returns (uint256) {
         return stakedAmount[user];
+    }
+
+    /// @notice Backwards-compatible view (frontend reads this).
+    function LOCK_PERIOD() external view returns (uint256) {
+        return lockPeriod;
     }
 
     // ---------------------------------------------------------------------
@@ -198,14 +214,6 @@ contract Staking is Ownable, ReentrancyGuard, Pausable {
         emit Staked(msg.sender, amount, stakedAmount[msg.sender]);
     }
 
-    /**
-     * @notice Withdraw `amount` of staked principal.
-     *         - If the lock period has passed, also pays any settled rewards
-     *           up to the amount the reward pool can cover; any unpaid
-     *           remainder stays claimable once the pool is refunded.
-     *         - If still locked, all settled rewards are forfeited.
-     *         Principal withdrawal NEVER reverts on reward-pool shortage.
-     */
     function unstake(uint256 amount)
         external
         nonReentrant
@@ -215,7 +223,7 @@ contract Staking is Ownable, ReentrancyGuard, Pausable {
         require(stakedAmount[msg.sender] >= amount, "Staking: insufficient staked");
 
         bool unlocked = block.timestamp >=
-            lastStakeTime[msg.sender] + LOCK_PERIOD;
+            lastStakeTime[msg.sender] + lockPeriod;
         uint256 rewardsPaid = 0;
 
         if (unlocked) {
@@ -246,15 +254,10 @@ contract Staking is Ownable, ReentrancyGuard, Pausable {
         emit Unstaked(msg.sender, amount, rewardsPaid);
     }
 
-    /**
-     * @notice Claim accrued rewards. Requires the lock period to have passed.
-     *         Pays as much as the reward pool can cover; any unpaid remainder
-     *         stays claimable later.
-     */
     function claimRewards() external nonReentrant updateReward(msg.sender) {
         require(stakedAmount[msg.sender] > 0, "Staking: nothing staked");
         require(
-            block.timestamp >= lastStakeTime[msg.sender] + LOCK_PERIOD,
+            block.timestamp >= lastStakeTime[msg.sender] + lockPeriod,
             "Staking: still locked"
         );
 
@@ -283,10 +286,6 @@ contract Staking is Ownable, ReentrancyGuard, Pausable {
         emit RewardPoolFunded(msg.sender, amount, rewardPool);
     }
 
-    /**
-     * @notice Withdraw unused reward pool tokens. Cannot touch staked principal
-     *         or rewards already accrued (settled to the current block).
-     */
     function withdrawUnusedRewards(uint256 amount)
         external
         onlyOwner
@@ -295,7 +294,6 @@ contract Staking is Ownable, ReentrancyGuard, Pausable {
         require(amount > 0, "Staking: amount=0");
         require(amount <= rewardPool, "Staking: exceeds reward pool");
 
-        // After settlement, `unclaimedRewards` is current as of this block.
         uint256 balAfter = stakingToken.balanceOf(address(this)) - amount;
         require(
             balAfter >= totalStaked + unclaimedRewards,
@@ -307,15 +305,24 @@ contract Staking is Ownable, ReentrancyGuard, Pausable {
         emit RewardPoolWithdrawn(msg.sender, amount, rewardPool);
     }
 
-    /**
-     * @notice Update APR. Settles the global index first so the new rate
-     *         only applies from now forward (no retroactive re-pricing).
-     */
-    function setAPR(uint256 newAprBps) external onlyOwner updateReward(address(0)) {
+    function setAPR(uint256 newAprBps)
+        external
+        onlyOwner
+        updateReward(address(0))
+    {
         require(newAprBps <= MAX_APR_BPS, "Staking: APR too high");
         uint256 old = aprBps;
         aprBps = newAprBps;
         emit APRUpdated(old, newAprBps);
+    }
+
+    /// @notice Update the lock period applied to NEW stake actions and to the
+    ///         lock check. Capped at `MAX_LOCK_PERIOD` (365 days).
+    function setLockPeriod(uint256 newLockPeriod) external onlyOwner {
+        require(newLockPeriod <= MAX_LOCK_PERIOD, "Staking: lock too long");
+        uint256 old = lockPeriod;
+        lockPeriod = newLockPeriod;
+        emit LockPeriodUpdated(old, newLockPeriod);
     }
 
     function pause() external onlyOwner {

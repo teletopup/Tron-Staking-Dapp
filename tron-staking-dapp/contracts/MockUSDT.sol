@@ -5,15 +5,16 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title MockJST
- * @notice Mintable TRC-20 used as a stand-in for JST on Nile testnet.
- *         Anyone can call `faucet()` to receive 1,000 tokens for testing.
+ * @title MockUSDT
+ * @notice Mintable TRC-20 used as a stand-in for USDT on Nile testnet.
+ *         Matches real USDT-TRC20 with 6 decimals. Anyone can call `faucet()`
+ *         to receive 1,000 mUSDT for testing.
  */
-contract MockJST is ERC20, Ownable {
-    uint8 private constant DECIMALS = 18;
+contract MockUSDT is ERC20, Ownable {
+    uint8 private constant DECIMALS = 6;
     uint256 public constant FAUCET_AMOUNT = 1_000 * 10 ** DECIMALS;
 
-    constructor() ERC20("Mock JST", "mJST") {
+    constructor() ERC20("Mock USDT", "mUSDT") {
         _mint(msg.sender, 1_000_000 * 10 ** DECIMALS);
     }
 

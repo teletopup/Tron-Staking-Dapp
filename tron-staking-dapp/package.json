@@ -2,7 +2,7 @@
   "name": "tron-staking-dapp",
   "version": "1.0.0",
   "private": true,
-  "description": "TRON staking dApp — JST staking with fixed APR, 7-day lock, vanilla JS frontend.",
+  "description": "TRON staking dApp — USDT-TRC20 staking with fixed APR, 7-day lock, upgradeable contracts, vanilla JS frontend.",
   "scripts": {
     "compile": "tronbox compile",
     "migrate:nile": "tronbox migrate --network nile --reset",

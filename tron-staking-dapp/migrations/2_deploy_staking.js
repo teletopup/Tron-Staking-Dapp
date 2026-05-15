@@ -1,9 +1,10 @@
-const MockJST = artifacts.require("MockJST");
+const MockUSDT = artifacts.require("MockUSDT");
 const Staking = artifacts.require("Staking");
 const StakingProxy = artifacts.require("StakingProxy");
 
-// JST mainnet TRC-20 address (Tron mainnet). Used only on `mainnet`.
-const JST_MAINNET = "TCFLL5dx5ZJdKnWuesXxi1VPwjLVmWZZy9";
+// USDT-TRC20 mainnet address (Tron mainnet). Used only on `mainnet`.
+// 6 decimals.
+const USDT_MAINNET = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 
 // Initial APR in basis points: 12% = 1200
 const INITIAL_APR_BPS = 1200;
@@ -12,13 +13,13 @@ module.exports = async function (deployer, network) {
   // 1. Resolve the staking token.
   let tokenAddress;
   if (network === "mainnet") {
-    tokenAddress = JST_MAINNET;
-    console.log("Using real JST on mainnet:", tokenAddress);
+    tokenAddress = USDT_MAINNET;
+    console.log("Using real USDT on mainnet:", tokenAddress);
   } else {
-    await deployer.deploy(MockJST);
-    const mock = await MockJST.deployed();
+    await deployer.deploy(MockUSDT);
+    const mock = await MockUSDT.deployed();
     tokenAddress = mock.address;
-    console.log("Deployed MockJST at:", tokenAddress);
+    console.log("Deployed MockUSDT at:", tokenAddress);
   }
 
   // 2. Deploy the implementation (constructor disables initializers — safe).
@@ -27,7 +28,6 @@ module.exports = async function (deployer, network) {
   console.log("Deployed Staking implementation at:", impl.address);
 
   // 3. Encode the initializer call: initialize(address,uint256).
-  //    TronWeb is exposed as `tronWeb` inside the migration runtime.
   const initData = tronWeb.utils.abi.encodeParamsV2ByABI(
     {
       name: "initialize",
@@ -39,8 +39,7 @@ module.exports = async function (deployer, network) {
     },
     [tokenAddress, INITIAL_APR_BPS],
   );
-  // Prepend the function selector for `initialize(address,uint256)`.
-  const selector = tronWeb.sha3("initialize(address,uint256)").slice(0, 10); // "0x" + 8 hex
+  const selector = tronWeb.sha3("initialize(address,uint256)").slice(0, 10);
   const calldata = selector + initData.replace(/^0x/, "");
 
   // 4. Deploy the ERC1967 proxy pointing at the implementation, with init data.
@@ -52,6 +51,8 @@ module.exports = async function (deployer, network) {
   console.log("FRONTEND CONFIG VALUES");
   console.log("  TOKEN_ADDRESS   :", tokenAddress);
   console.log("  STAKING_ADDRESS :", proxy.address, "  <-- use the PROXY here");
+  console.log("  TOKEN_SYMBOL    : USDT");
+  console.log("  TOKEN_DECIMALS  : 6");
   console.log("==============================================");
   console.log("");
   console.log("To upgrade later: deploy a new Staking implementation, then call");

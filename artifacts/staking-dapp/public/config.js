@@ -6,10 +6,10 @@
 window.APP_CONFIG = {
   NETWORK: "nile", // "nile" | "mainnet"
   TRONSCAN_BASE: "https://nile.tronscan.org", // mainnet: https://tronscan.org
-  STAKING_ADDRESS: "TYourStakingContractAddressHere",
-  TOKEN_ADDRESS: "TYourMockJSTOrJSTAddressHere",
-  TOKEN_SYMBOL: "JST",
-  TOKEN_DECIMALS: 18,
+  STAKING_ADDRESS: "TYourStakingProxyAddressHere",
+  TOKEN_ADDRESS: "TYourMockUSDTOrUSDTAddressHere",
+  TOKEN_SYMBOL: "USDT",
+  TOKEN_DECIMALS: 6, // USDT on TRON uses 6 decimals
   REFRESH_INTERVAL_MS: 10_000,
 };
 

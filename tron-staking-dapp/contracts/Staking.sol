@@ -11,7 +11,9 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
  * @title Staking (UUPS upgradeable)
- * @notice Single-token staking: users stake JST and earn JST rewards.
+ * @notice Single-token staking: users stake the configured TRC-20 token
+ *         (USDT on mainnet, MockUSDT on testnet) and earn rewards in the
+ *         same token at a fixed APR set by the owner.
  *
  * Upgradeability:
  *  - UUPS proxy pattern. The owner is the only address allowed to authorize

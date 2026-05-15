@@ -1,6 +1,6 @@
-# JST Staking dApp (TRON)
+# USDT Staking dApp (TRON)
 
-A complete TRON staking dApp: stake **JST**, earn JST rewards at a fixed APR
+A complete TRON staking dApp: stake **USDT-TRC20**, earn USDT rewards at a fixed APR
 (default 12%), with a 7-day lock from the most recent stake. Early withdrawal
 is allowed but forfeits any pending rewards.
 
@@ -20,7 +20,7 @@ tron-staking-dapp/
 ├── contracts/
 │   ├── Staking.sol        # Main staking contract (UUPS upgradeable)
 │   ├── StakingProxy.sol   # ERC1967 proxy wrapper
-│   ├── MockJST.sol        # Test TRC-20 (Nile only)
+│   ├── MockUSDT.sol        # Test TRC-20 (Nile only)
 │   └── Migrations.sol     # TronBox migration tracker
 ├── migrations/
 │   ├── 1_initial_migration.js
@@ -87,7 +87,7 @@ Compiled artifacts are written to `./build/contracts/`.
 
    ```js
    STAKING_ADDRESS: "T...",   // ⚠️ use the PROXY address (printed as "Deployed StakingProxy at")
-   TOKEN_ADDRESS:   "T...",   // address printed for "Deployed MockJST at"
+   TOKEN_ADDRESS:   "T...",   // address printed for "Deployed MockUSDT at"
    ```
 
    The implementation address is only used for upgrades — never call it
@@ -97,8 +97,8 @@ Compiled artifacts are written to `./build/contracts/`.
 
    ```js
    const s = await Staking.deployed();
-   const t = await MockJST.deployed();
-   const amt = "100000000000000000000000"; // 100,000 mJST (18 decimals)
+   const t = await MockUSDT.deployed();
+   const amt = "100000000000"; // 100,000 mUSDT (6 decimals)
    await t.approve(s.address, amt).send();
    await s.fundRewardPool(amt).send();
    ```
@@ -125,9 +125,9 @@ Stake, Unstake, and Claim from the UI. Stats refresh automatically every 10s.
 > of every flow.**
 
 1. Set `PRIVATE_KEY_MAINNET` in `.env`.
-2. The mainnet migration uses the real JST token at
-   `TCFLL5dx5ZJdKnWuesXxi1VPwjLVmWZZy9`. Confirm this is the address you
-   intend to support before proceeding.
+2. The mainnet migration automatically uses the real USDT-TRC20 token at
+   `TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t` (6 decimals). Confirm this is the
+   address you intend to support before proceeding.
 3. Run:
 
    ```bash
@@ -139,11 +139,26 @@ Stake, Unstake, and Claim from the UI. Stats refresh automatically every 10s.
    ```js
    NETWORK: "mainnet",
    TRONSCAN_BASE: "https://tronscan.org",
-   STAKING_ADDRESS: "T...",
-   TOKEN_ADDRESS: "TCFLL5dx5ZJdKnWuesXxi1VPwjLVmWZZy9",
-   TOKEN_SYMBOL: "JST",
-   TOKEN_DECIMALS: 18,
+   STAKING_ADDRESS: "T...",                                  // the proxy address
+   TOKEN_ADDRESS: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",      // USDT-TRC20
+   TOKEN_SYMBOL: "USDT",
+   TOKEN_DECIMALS: 6,
    ```
+
+### Token compatibility notes (read before deploying)
+
+The staking contract assumes the staked token is a **standard, exact-transfer
+TRC-20**. USDT-TRC20 satisfies this today, but be aware of:
+
+- **No fee-on-transfer / deflationary tokens.** The contract credits the
+  requested amount, not the actually-received balance. A fee-on-transfer
+  token would silently make the contract insolvent.
+- **Issuer controls.** Tether can blacklist/freeze addresses. If the staking
+  contract or a user is blacklisted, `stake`/`unstake`/`claim` will revert
+  for that party. This is an inherent risk of building on USDT.
+- **Allowance reset semantics.** USDT requires existing non-zero allowance
+  to be set back to zero before being changed. The frontend handles this
+  automatically (`approve(0)` then `approve(max)`).
 
 ---
 
@@ -162,7 +177,7 @@ Stake, Unstake, and Claim from the UI. Stats refresh automatically every 10s.
      (you can produce one with any Solidity flattener, e.g.
      `npx sol-merger contracts/Staking.sol ./flattened`).
    - **Constructor arguments:** ABI-encoded `(address _stakingToken, uint256 _aprBps)`.
-4. Submit and wait for verification confirmation. Repeat for `MockJST.sol` if used.
+4. Submit and wait for verification confirmation. Repeat for `MockUSDT.sol` if used.
 
 ---
 

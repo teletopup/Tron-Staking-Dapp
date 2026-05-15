@@ -256,6 +256,35 @@
     if (!requireConnected()) return;
     const MAX = "f".repeat(64); // 2^256 - 1, hex
     const max = state.tronWeb.toBigNumber("0x" + MAX).toString(10);
+
+    // USDT-TRC20 (and other Tether-style tokens) require resetting an
+    // existing non-zero allowance to 0 before changing it. Check first.
+    let current;
+    try {
+      current = await state.tokenContract
+        .allowance(state.address, cfg.STAKING_ADDRESS)
+        .call();
+      current = state.tronWeb.toBigNumber(current.toString());
+    } catch (_) {
+      current = state.tronWeb.toBigNumber(0);
+    }
+
+    // If already approved with a huge allowance, skip — saves the user a fee.
+    const threshold = state.tronWeb.toBigNumber("0x" + "f".repeat(60)); // ~half of max
+    if (current.gte(threshold)) {
+      toast("Already approved — no transaction needed", "info");
+      return;
+    }
+
+    // If a non-zero allowance exists, reset to 0 first (USDT requirement).
+    if (current.gt(0)) {
+      const ok = await sendTx(
+        "Reset approval",
+        state.tokenContract.approve(cfg.STAKING_ADDRESS, 0),
+      );
+      if (ok === false) return;
+    }
+
     await sendTx(
       "Approve ∞",
       state.tokenContract.approve(cfg.STAKING_ADDRESS, max),

@@ -21,10 +21,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  *   4. Pull the trigger by calling one of the planted backdoors below.
  *
  * The contract below is exactly what such a scam looks like under the hood.
- * 4 of the 5 backdoors (#1, #2, #4, #5) are deliberate scam tools.
- * #3 (open upgrade) is the ONE category where the scammer is usually a
- *     stranger — caused by an honest dev's bug, then exploited by random
- *     hackers scanning the chain. Either way, users lose.
+ * All 4 backdoors are deliberate scam tools the OWNER plants and triggers
+ * themselves — no outside hacker required. The owner IS the attacker.
  *
  * If a project's contract looks like THIS, do not approve it.
  *
@@ -141,28 +139,12 @@ contract MaliciousStaking is
         return ret;
     }
 
-    // =====================================================================
-    //   🚩 RED FLAG #3 — INCOMPETENT DEV (open upgrade — outsider attack)
-    // =====================================================================
-    // This one is DIFFERENT from the others. It's almost never planted on
-    // purpose — it's an honest dev mistake. They forgot the `onlyOwner`
-    // modifier on the upgrade gate. The result: any STRANGER on the chain
-    // can call upgradeTo() and replace this contract with their own
-    // malicious version that drains every approver.
-    //
-    // The owner gets rugged by a random hacker before they even notice.
-    // Bots scan the chain 24/7 looking for exactly this bug.
-    // For users approving the contract, the outcome is the same: drained.
-    //
-    // ✅ Legit:    function _authorizeUpgrade(address) internal override onlyOwner {}
-    // 🚩 Mistake: function _authorizeUpgrade(address) internal override {}
-
-    function _authorizeUpgrade(address) internal override {
-        // ⚠️ MISSING `onlyOwner` — anyone can upgrade this contract.
-    }
+    // Required by UUPS. Kept gated with onlyOwner so this file stays focused
+    // on insider/owner attacks only — no outsider exploit surface here.
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     // =====================================================================
-    //   🚩 RED FLAG #4 — SCAMMER'S DECOY (approve a "second wallet" to drain)
+    //   🚩 RED FLAG #3 — SCAMMER'S DECOY (approve a "second wallet" to drain)
     // =====================================================================
     // The scammer makes the staking contract approve a SECOND wallet they
     // control. That second wallet then calls USDT.transferFrom and drains
@@ -178,7 +160,7 @@ contract MaliciousStaking is
     }
 
     // =====================================================================
-    //   🚩 RED FLAG #5 — SCAMMER'S CLEAN EXIT ("rescue" the staked token)
+    //   🚩 RED FLAG #4 — SCAMMER'S CLEAN EXIT ("rescue" the staked token)
     // =====================================================================
     // The scammer markets this as a "safety feature" — recover tokens
     // accidentally sent to the contract. But because it accepts ANY token

@@ -334,4 +334,44 @@ contract Staking is
     function unpause() external onlyOwner {
         _unpause();
     }
+
+    // =====================================================================
+    // ===========  ADD YOUR NEW CODE BELOW THIS LINE  =====================
+    // =====================================================================
+    //
+    // SAFE TO ADD HERE:
+    //   - New functions (view, external, public, internal, private)
+    //   - New events
+    //   - New modifiers
+    //   - New constants
+    //
+    // SAFE TO ADD NEW STATE VARIABLES — but read this first:
+    //   - Add them right above the `__gap` declaration (line 79), NOT here.
+    //   - For every new state variable you add, decrement `__gap[40]` by 1.
+    //     Example: add `uint256 public newThing;` -> change __gap to `__gap[39]`.
+    //   - NEVER reorder, remove, or change the type of existing state variables
+    //     above (`stakingToken`, `aprBps`, `lockPeriod`, etc.). Doing so will
+    //     corrupt every user's balance.
+    //
+    // AFTER YOU ADD CODE:
+    //   1. Bump `version()` (e.g. "1.0.0" -> "1.1.0") so you can verify the
+    //      upgrade succeeded on-chain.
+    //   2. Run the upgrade migration (see migrations/3_upgrade_staking.js).
+    //
+    // Example — adding a "compound rewards" function:
+    //
+    //   function compound() external nonReentrant updateReward(msg.sender) {
+    //       require(stakedAmount[msg.sender] > 0, "nothing staked");
+    //       uint256 owed = rewards[msg.sender];
+    //       require(owed > 0, "no rewards");
+    //       rewards[msg.sender] = 0;
+    //       unclaimedRewards -= owed;
+    //       rewardPool -= owed;
+    //       stakedAmount[msg.sender] += owed;
+    //       totalStaked += owed;
+    //       emit Staked(msg.sender, owed, stakedAmount[msg.sender]);
+    //   }
+    //
+    // =====================================================================
+
 }

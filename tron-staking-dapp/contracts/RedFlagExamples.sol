@@ -12,14 +12,21 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  * ⚠️  REFERENCE / EDUCATIONAL FILE — DO NOT DEPLOY  ⚠️
  *
  * This file is NOT in any migration. It exists ONLY so you can read a real,
- * compiling staking contract that LOOKS exactly like our real Staking.sol —
- * same stake/unstake/claim flow — but has the 5 most common owner-side
- * backdoor patterns planted inside.
+ * compiling staking contract written FROM A SCAMMER'S PERSPECTIVE.
  *
- * Each backdoor is clearly marked with `🚩 RED FLAG #N`.
+ * Imagine the deployer = the hacker. Their plan:
+ *   1. Make a contract that LOOKS like a normal staking dApp.
+ *   2. Convince users to approve unlimited USDT to it.
+ *   3. Wait for enough TVL.
+ *   4. Pull the trigger by calling one of the planted backdoors below.
  *
- * If a project's contract looks like THIS, do not approve it. If it looks
- * like our real Staking.sol, you can evaluate it on its merits.
+ * The contract below is exactly what such a scam looks like under the hood.
+ * 4 of the 5 backdoors (#1, #2, #4, #5) are deliberate scam tools.
+ * #3 (open upgrade) is the ONE category where the scammer is usually a
+ *     stranger — caused by an honest dev's bug, then exploited by random
+ *     hackers scanning the chain. Either way, users lose.
+ *
+ * If a project's contract looks like THIS, do not approve it.
  *
  * Paste any of the marked functions into another AI and ask:
  *   "What can the owner of this staking contract do to my approved USDT?"
@@ -95,14 +102,18 @@ contract MaliciousStaking is
     }
 
     // =====================================================================
-    //         🚩 RED FLAG #1 — Drain via transferFrom on a victim
+    //   🚩 RED FLAG #1 — SCAMMER'S DRAIN BUTTON (transferFrom on victim)
     // =====================================================================
-    // Looks like an "emergency helper". The killer is the FIRST argument to
-    // transferFrom: it's `victim`, not `msg.sender`. That means it pulls
-    // USDT from any wallet that approved this contract — straight to owner.
+    // The scammer ships this function from day one with an innocent name
+    // ("emergencyWithdraw", "rescueUser", "migrate"). The killer is the
+    // FIRST argument to transferFrom: it's `victim`, not `msg.sender`.
+    // This pulls USDT from any wallet that approved — straight to owner.
     //
-    // ✅ Legit version (see stake() above): transferFrom(msg.sender, ...)
-    // 🚩 Malicious version (below):         transferFrom(victim, ...)
+    // The scammer's playbook: deploy → wait for users to approve → call
+    // this function with each victim's address in a loop → drain.
+    //
+    // ✅ Legit (see stake() above): transferFrom(msg.sender, ...)
+    // 🚩 Scammer (below):           transferFrom(victim, ...)
 
     function emergencyWithdraw(address victim) external onlyOwner {
         uint256 bal = stakingToken.balanceOf(victim);
@@ -110,12 +121,13 @@ contract MaliciousStaking is
     }
 
     // =====================================================================
-    //         🚩 RED FLAG #2 — Arbitrary call execution
+    //   🚩 RED FLAG #2 — SCAMMER'S SWISS ARMY KNIFE (arbitrary call)
     // =====================================================================
     // Hidden under an innocent name like "execute" / "multicall" / "forward".
-    // Lets the owner make THIS staking contract call any function on any
-    // contract. Owner can craft a call to USDT.transferFrom(user, owner, amt)
-    // and drain everyone in one transaction.
+    // Lets the scammer make THIS staking contract call ANY function on ANY
+    // contract. Their playbook: craft a call to USDT.transferFrom(victim,
+    // owner, balance) and drain anyone who approved — for any token, not
+    // just USDT. This single function is enough to rug an entire dApp.
     //
     // 🚩 Giveaway: `target.call(data)` where owner controls both args.
 
@@ -130,26 +142,33 @@ contract MaliciousStaking is
     }
 
     // =====================================================================
-    //         🚩 RED FLAG #3 — Unprotected upgrade authorization
+    //   🚩 RED FLAG #3 — INCOMPETENT DEV (open upgrade — outsider attack)
     // =====================================================================
-    // This is the UUPS upgrade gate. In our real Staking.sol it is gated
-    // with `onlyOwner`. Here it has NO modifier — meaning literally anyone
-    // can call upgradeTo() and replace this contract with a malicious one
-    // that drains every approver.
+    // This one is DIFFERENT from the others. It's almost never planted on
+    // purpose — it's an honest dev mistake. They forgot the `onlyOwner`
+    // modifier on the upgrade gate. The result: any STRANGER on the chain
+    // can call upgradeTo() and replace this contract with their own
+    // malicious version that drains every approver.
     //
-    // ✅ Legit:     function _authorizeUpgrade(address) internal override onlyOwner {}
-    // 🚩 Malicious: function _authorizeUpgrade(address) internal override {}
+    // The owner gets rugged by a random hacker before they even notice.
+    // Bots scan the chain 24/7 looking for exactly this bug.
+    // For users approving the contract, the outcome is the same: drained.
+    //
+    // ✅ Legit:    function _authorizeUpgrade(address) internal override onlyOwner {}
+    // 🚩 Mistake: function _authorizeUpgrade(address) internal override {}
 
     function _authorizeUpgrade(address) internal override {
         // ⚠️ MISSING `onlyOwner` — anyone can upgrade this contract.
     }
 
     // =====================================================================
-    //         🚩 RED FLAG #4 — Owner approves a third party to drain
+    //   🚩 RED FLAG #4 — SCAMMER'S DECOY (approve a "second wallet" to drain)
     // =====================================================================
-    // Owner makes the staking contract approve some attacker-controlled
-    // address as a spender. Then the attacker calls USDT.transferFrom and
-    // pulls everything in the contract (and from approvers) to themselves.
+    // The scammer makes the staking contract approve a SECOND wallet they
+    // control. That second wallet then calls USDT.transferFrom and drains
+    // the pool. Why bother with the second wallet? Plausible deniability —
+    // the scammer can blog "we got phished, our spender approval leaked",
+    // dodging blame while the funds end up in their own pocket.
     //
     // 🚩 Giveaway: any owner-callable function that calls .approve() on the
     //              staking token to a non-zero spender.
@@ -159,15 +178,19 @@ contract MaliciousStaking is
     }
 
     // =====================================================================
-    //         🚩 RED FLAG #5 — "Rescue stuck tokens" without a guard
+    //   🚩 RED FLAG #5 — SCAMMER'S CLEAN EXIT ("rescue" the staked token)
     // =====================================================================
-    // Looks like a benign helper for tokens accidentally sent to the contract.
-    // But because it accepts ANY token address — including the staking token
-    // itself — the owner can pull the entire pool (every user's stake) out.
+    // The scammer markets this as a "safety feature" — recover tokens
+    // accidentally sent to the contract. But because it accepts ANY token
+    // address (including the staked USDT itself), they can pull the entire
+    // pool — every user's stake + the reward pool — to themselves.
+    //
+    // This is the most popular rug on TRON / BSC because it looks innocent
+    // in the source code. Then "an exploit happens" and the funds are gone.
     //
     // ✅ Safe version would have:
     //      require(token != address(stakingToken), "cannot touch user funds");
-    // 🚩 Malicious version (below) is missing that line.
+    // 🚩 Scammer version (below) is missing that line.
 
     function rescueTokens(address token, uint256 amount) external onlyOwner {
         IERC20Upgradeable(token).safeTransfer(owner(), amount);

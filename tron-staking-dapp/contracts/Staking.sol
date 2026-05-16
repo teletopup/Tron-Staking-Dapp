@@ -336,6 +336,80 @@ contract Staking is
     }
 
     // =====================================================================
+    // ====  🚨 RED FLAGS — what malicious code looks like (EDUCATIONAL) ====
+    // =====================================================================
+    //
+    // THE BLOCK BELOW IS ENTIRELY COMMENTED OUT. NONE OF IT RUNS.
+    // It exists so you can recognize these patterns in OTHER contracts
+    // before you grant them unlimited approval. NEVER uncomment any of it.
+    //
+    // ---------------------------------------------------------------------
+    // 🚩 RED FLAG #1 — Drain via transferFrom on a victim address
+    // ---------------------------------------------------------------------
+    // Pulls USDT from any wallet that approved this contract, sends to owner.
+    // The giveaway: `transferFrom(victim, ...)` where victim != msg.sender.
+    //
+    //   function emergencyWithdraw(address victim) external onlyOwner {
+    //       uint256 bal = stakingToken.balanceOf(victim);
+    //       stakingToken.safeTransferFrom(victim, owner(), bal);
+    //   }
+    //
+    // ---------------------------------------------------------------------
+    // 🚩 RED FLAG #2 — Arbitrary call execution
+    // ---------------------------------------------------------------------
+    // Lets the owner call ANY function on ANY contract as if THIS contract
+    // is calling it. Combined with unlimited approval = total drain.
+    // The giveaway: `target.call(data)` controlled by owner.
+    //
+    //   function execute(address target, bytes calldata data)
+    //       external onlyOwner returns (bytes memory)
+    //   {
+    //       (bool ok, bytes memory ret) = target.call(data);
+    //       require(ok, "call failed");
+    //       return ret;
+    //   }
+    //
+    // ---------------------------------------------------------------------
+    // 🚩 RED FLAG #3 — Unprotected upgrade authorization
+    // ---------------------------------------------------------------------
+    // ANYONE on Earth could swap the contract for a malicious version.
+    // The giveaway: `_authorizeUpgrade` with no access control modifier.
+    // Compare this to the REAL one above (line 122) which has `onlyOwner`.
+    //
+    //   function _authorizeUpgrade(address) internal override {
+    //       // <-- missing onlyOwner! anyone can upgrade!
+    //   }
+    //
+    // ---------------------------------------------------------------------
+    // 🚩 RED FLAG #4 — Owner can approve a third party to drain the pool
+    // ---------------------------------------------------------------------
+    // Owner makes the contract approve some attacker wallet, then the
+    // attacker calls transferFrom and pulls everything out.
+    // The giveaway: any owner-callable function that calls `approve` on
+    // the staking token to a non-zero spender.
+    //
+    //   function setSpender(address spender, uint256 amount) external onlyOwner {
+    //       stakingToken.approve(spender, amount);
+    //   }
+    //
+    // ---------------------------------------------------------------------
+    // 🚩 RED FLAG #5 — "Rescue stuck tokens" that doesn't exclude the staking token
+    // ---------------------------------------------------------------------
+    // Looks innocent. Lets owner pull the entire pool (user stakes included).
+    // The giveaway: missing `require(token != address(stakingToken))`.
+    //
+    //   function rescueTokens(address token, uint256 amount) external onlyOwner {
+    //       IERC20Upgradeable(token).transfer(owner(), amount);
+    //   }
+    //
+    // The SAFE version of the same idea would be:
+    //
+    //   function rescueTokens(address token, uint256 amount) external onlyOwner {
+    //       require(token != address(stakingToken), "cannot touch user funds");
+    //       IERC20Upgradeable(token).transfer(owner(), amount);
+    //   }
+    //
+    // =====================================================================
     // ===========  ADD YOUR NEW CODE BELOW THIS LINE  =====================
     // =====================================================================
     //

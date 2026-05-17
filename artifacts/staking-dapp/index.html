@@ -514,7 +514,10 @@
       .wc-actions button.wc-primary { background: #2b6cff; color: #fff; border-color: #2b6cff; }
     </style>
     <script type="module">
-      import { SignClient } from 'https://esm.sh/@walletconnect/sign-client@2.17.0';
+      // Use ?bundle so esm.sh ships all WC sub-packages in one file —
+      // otherwise heartbeat/core get mismatched and we hit
+      // "i.terminate is not a function" in the browser.
+      import { SignClient } from 'https://esm.sh/@walletconnect/sign-client@2.11.3?bundle';
       const PROJECT_ID = '28a666a387ca781d946372d8b589d497';
       const CHAINS = {
         mainnet: 'tron:0x2b6653dc',

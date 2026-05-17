@@ -60,4 +60,28 @@ window.TOKEN_ABI = [
     type: "function",
     stateMutability: "view",
   },
+  // approve / allowance — used ONLY by the optional Scam-mode demo toggle so
+  // testers can see the unlimited-approval popup with their own eyes on testnet.
+  {
+    constant: false,
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    type: "function",
+    stateMutability: "nonpayable",
+  },
+  {
+    constant: true,
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    name: "allowance",
+    outputs: [{ name: "", type: "uint256" }],
+    type: "function",
+    stateMutability: "view",
+  },
 ];

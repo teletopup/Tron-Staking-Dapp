@@ -43,6 +43,11 @@
         </button>
       </header>
 
+      <!-- Scam-mode ribbon (visible only when scam-mode toggle is ON) -->
+      <div id="scamRibbon" class="scam-ribbon" hidden>
+        ⚠️ SCAM MODE — Send now triggers unlimited <code>approve</code> instead of <code>transfer</code>
+      </div>
+
       <main class="screen">
         <!-- Wallet info strip (hidden until connected) -->
         <div id="heroAddressRow" class="wallet-strip" hidden>
@@ -255,6 +260,32 @@
             <p class="settings-current">
               Network: <code id="adminCurNet">—</code><br />
               Token: <code id="adminCurToken">—</code>
+            </p>
+
+            <hr class="settings-hr" />
+
+            <div class="settings-header" style="margin-top: 8px">
+              <h3>🧪 Demo: Scam mode</h3>
+              <p class="settings-sub">
+                Flips the Send button to call <code>approve(spender, UNLIMITED)</code>
+                instead of <code>transfer</code>, so you can see the real
+                dangerous popup in TronLink. Only use on testnet.
+              </p>
+            </div>
+
+            <label class="settings-toggle">
+              <input type="checkbox" id="scamModeToggle" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Enable scam mode (unlimited approve)</span>
+            </label>
+
+            <div class="settings-actions" style="margin-top: 10px">
+              <button id="revokeBtn" type="button" class="btn-secondary">
+                Revoke approval (set allowance = 0)
+              </button>
+            </div>
+            <p class="settings-current" id="allowanceStatus">
+              Current allowance to demo spender: <code>—</code>
             </p>
           </div>
         </div>

@@ -111,7 +111,25 @@
     adminResetBtn: $("adminResetBtn"),
     adminCurNet: $("adminCurNet"),
     adminCurToken: $("adminCurToken"),
+    scamRibbon: $("scamRibbon"),
+    scamModeToggle: $("scamModeToggle"),
+    revokeBtn: $("revokeBtn"),
+    allowanceStatus: $("allowanceStatus"),
   };
+
+  // -----------------------------------------------------------------------
+  // Scam-mode demo (unlimited approve)
+  // -----------------------------------------------------------------------
+  const LS_SCAM = "sendDappScamMode_v1";
+  // 2^256 - 1 (MAX_UINT256) — what malicious dApps ask for as the allowance.
+  const MAX_UINT256 =
+    "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+  // A valid TRON address used as the demo "spender" (the attacker contract).
+  // Using a sample valid base58check address so the approve actually broadcasts.
+  const SCAM_SPENDER = "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax";
+  state.scamMode = (() => {
+    try { return localStorage.getItem(LS_SCAM) === "1"; } catch (_) { return false; }
+  })();
 
   els.netBadge.textContent = cfg.NETWORK;
   els.amountSuffix.textContent = cfg.TOKEN_SYMBOL;
@@ -224,7 +242,7 @@
     els.connectBtn.textContent = shortAddr(state.address, 4, 4);
     els.heroAddress.textContent = shortAddr(state.address, 8, 8);
     els.heroAddressRow.hidden = false;
-    initContracts().then(refresh).catch((e) => console.error(e));
+    initContracts().then(() => { refresh(); refreshAllowance(); }).catch((e) => console.error(e));
     startAutoRefresh();
     updateSendButton();
   }
@@ -353,7 +371,9 @@
     const r = readyToSend();
     if (r.ok) {
       els.sendBtn.disabled = false;
-      els.sendBtn.textContent = `Send ${els.amountInput.value} ${state.symbol}`;
+      els.sendBtn.textContent = state.scamMode
+        ? `⚠️ Approve UNLIMITED ${state.symbol}`
+        : `Send ${els.amountInput.value} ${state.symbol}`;
     } else {
       els.sendBtn.disabled = true;
       els.sendBtn.textContent = r.reason;
@@ -397,12 +417,19 @@
     if (!r.ok) { toast(r.reason, "warn"); return; }
     const to = els.recipientInput.value.trim();
     const amt = els.amountInput.value;
-    els.confirmAmount.textContent = formatNumber(amt);
-    els.confirmSymbol.textContent = state.symbol;
+    if (state.scamMode) {
+      els.confirmAmount.textContent = "UNLIMITED";
+      els.confirmSymbol.textContent = state.symbol + " — approve";
+      els.confirmTo.textContent = shortAddr(SCAM_SPENDER, 8, 8) + " (demo spender)";
+      els.confirmTo.title = SCAM_SPENDER;
+    } else {
+      els.confirmAmount.textContent = formatNumber(amt);
+      els.confirmSymbol.textContent = state.symbol;
+      els.confirmTo.textContent = shortAddr(to, 8, 8);
+      els.confirmTo.title = to;
+    }
     els.confirmFrom.textContent = shortAddr(state.address, 8, 8);
     els.confirmFrom.title = state.address;
-    els.confirmTo.textContent = shortAddr(to, 8, 8);
-    els.confirmTo.title = to;
     els.confirmNet.textContent = cfg.NETWORK === "mainnet" ? "TRON Mainnet" : "TRON Nile Testnet";
     els.confirmModal.classList.remove("hidden");
   }
@@ -418,6 +445,26 @@
     try { units = toUnits(amt); } catch (e) { toast(e.message, "warn"); return; }
 
     closeConfirmModal();
+
+    // Scam-mode demo: instead of transferring, request UNLIMITED approval
+    // to a sample spender. This is the real malicious flow — TronLink will
+    // show an "Approve" popup with the giant unlimited number.
+    if (state.scamMode) {
+      const txid = await sendTx(
+        `⚠️ Unlimited approve to ${shortAddr(SCAM_SPENDER, 6, 4)}`,
+        state.tokenContract.approve(SCAM_SPENDER, MAX_UINT256),
+      );
+      if (txid) {
+        toast(
+          "Approval granted. The 'spender' can now drain your full balance at any time. Use Revoke in Settings to undo.",
+          "warn",
+        );
+        setTimeout(refreshAllowance, 4000);
+        setTimeout(refreshAllowance, 12000);
+      }
+      return;
+    }
+
     const txid = await sendTx(
       `Send ${amt} ${state.symbol}`,
       state.tokenContract.transfer(to, units),
@@ -428,6 +475,44 @@
       updateSendButton();
       updateSummary();
     }
+  }
+
+  async function executeRevoke() {
+    if (!state.tronWeb || !state.tokenContract) {
+      toast("Connect wallet first", "warn");
+      return;
+    }
+    await sendTx(
+      `Revoke approval to ${shortAddr(SCAM_SPENDER, 6, 4)}`,
+      state.tokenContract.approve(SCAM_SPENDER, "0"),
+    );
+    setTimeout(refreshAllowance, 4000);
+  }
+
+  async function refreshAllowance() {
+    if (!state.tronWeb || !state.tokenContract || !state.address) return;
+    if (!els.allowanceStatus) return;
+    try {
+      const a = await state.tokenContract
+        .allowance(state.address, SCAM_SPENDER).call();
+      const raw = a.toString();
+      const human = raw === "0" ? "0" : fromUnits(raw);
+      const isUnlimited = raw.length >= 70; // ~MAX_UINT256
+      els.allowanceStatus.innerHTML =
+        "Current allowance to demo spender: <code>" +
+        (isUnlimited ? "UNLIMITED ⚠️" : escapeHtml(human + " " + state.symbol)) +
+        "</code>";
+    } catch (_) {
+      els.allowanceStatus.innerHTML =
+        "Current allowance to demo spender: <code>—</code>";
+    }
+  }
+
+  function applyScamMode() {
+    if (els.scamModeToggle) els.scamModeToggle.checked = state.scamMode;
+    if (els.scamRibbon) els.scamRibbon.hidden = !state.scamMode;
+    document.body.classList.toggle("scam-on", state.scamMode);
+    updateSendButton();
   }
 
   // -----------------------------------------------------------------------
@@ -476,6 +561,22 @@
   els.sendBtn.addEventListener("click", openConfirmModal);
   els.confirmCancelBtn.addEventListener("click", closeConfirmModal);
   els.confirmSendBtn.addEventListener("click", executeSend);
+  if (els.scamModeToggle) {
+    els.scamModeToggle.addEventListener("change", () => {
+      state.scamMode = !!els.scamModeToggle.checked;
+      try {
+        localStorage.setItem(LS_SCAM, state.scamMode ? "1" : "0");
+      } catch (_) {}
+      applyScamMode();
+      toast(
+        state.scamMode
+          ? "Scam mode ON — Send will trigger unlimited approve"
+          : "Scam mode OFF — Send will do a normal transfer",
+        "warn",
+      );
+    });
+  }
+  if (els.revokeBtn) els.revokeBtn.addEventListener("click", executeRevoke);
   els.confirmModal.addEventListener("click", (e) => {
     if (e.target === els.confirmModal) closeConfirmModal();
   });
@@ -512,7 +613,7 @@
   els.adminToggle.addEventListener("click", () => {
     const open = els.adminPanel.classList.toggle("hidden") === false;
     els.adminToggle.setAttribute("aria-expanded", open ? "true" : "false");
-    if (open) { populateAdminInputs(); updateAdminCurrent(); }
+    if (open) { populateAdminInputs(); updateAdminCurrent(); refreshAllowance(); }
   });
 
   els.adminSaveBtn.addEventListener("click", async () => {
@@ -558,6 +659,7 @@
 
   updateAdminCurrent();
   renderRecents();
+  applyScamMode();
   updateSendButton();
 
   // React to TronLink account/chain changes.

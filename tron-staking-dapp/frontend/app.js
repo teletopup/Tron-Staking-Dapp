@@ -610,19 +610,25 @@
     return parsed;
   }
 
-  function openAdmin() {
-    const open = els.adminPanel.classList.toggle("hidden") === false;
-    els.adminToggle.setAttribute("aria-expanded", open ? "true" : "false");
-    if (open) {
+  // Route detection: /admin shows ONLY the settings panel; / shows the dApp.
+  function isAdminRoute() {
+    const p = (location.pathname || "").replace(/\/+$/, "");
+    return /\/admin$/.test(p);
+  }
+  function applyRoute() {
+    const admin = isAdminRoute();
+    document.body.classList.toggle("route-admin", admin);
+    if (admin) {
+      els.adminPanel.classList.remove("hidden");
       populateAdminInputs();
       updateAdminCurrent();
       refreshAllowance();
-      els.adminPanel.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+      els.adminPanel.classList.add("hidden");
     }
   }
-  els.adminToggle.addEventListener("click", openAdmin);
-  const adminGear = document.getElementById("adminGear");
-  if (adminGear) adminGear.addEventListener("click", openAdmin);
+  applyRoute();
+  window.addEventListener("popstate", applyRoute);
 
   els.adminSaveBtn.addEventListener("click", async () => {
     const token = els.adminTokenAddr.value.trim();

@@ -281,19 +281,22 @@ a { color: var(--link); }
 }
 
 /* Scam-mode ribbon + toggle */
-.topbar-icon {
-  background: transparent;
-  border: none;
-  color: var(--text-2, #555);
-  padding: 6px;
-  margin-right: 6px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: background 0.15s;
+/* /admin route: hide the send UI, show only the settings drawer */
+body.route-admin .topbar-title::after { content: " — Admin"; opacity: 0.6; font-weight: 500; }
+body.route-admin .scam-ribbon { display: none !important; }
+body.route-admin main.screen > *:not(#adminPanel) { display: none !important; }
+body.route-admin .dock { display: none !important; }
+body.route-admin #adminPanel { display: block !important; }
+.admin-back { display: none; }
+body.route-admin .admin-back {
+  display: inline-block;
+  color: #1772f0;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-decoration: none;
+  font-size: 14px;
 }
-.topbar-icon:hover { background: var(--surface-3, #f0f0f0); }
+body.route-admin .admin-back:hover { text-decoration: underline; }
 .scam-ribbon {
   background: #fff3cd;
   color: #7a4a00;

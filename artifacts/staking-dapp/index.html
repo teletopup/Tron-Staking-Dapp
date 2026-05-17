@@ -157,15 +157,6 @@
             <span class="hint-muted hint-trx">
               · <span id="heroTrx">— TRX</span> for fees
             </span>
-            <a
-              id="faucetLink"
-              class="faucet-link"
-              href="https://nileex.io/join/getJoinPage"
-              target="_blank"
-              rel="noopener"
-              hidden
-              >Get test TRX ↗</a
-            >
           </div>
         </section>
 
@@ -209,19 +200,12 @@
           <div class="settings-inner">
             <a href="./" class="admin-back" id="adminBackLink">← Back to dApp</a>
             <div class="settings-header">
-              <h3>Token / Network</h3>
+              <h3>Token</h3>
               <p class="settings-sub">
-                Saved in your browser only. To change defaults for everyone,
-                edit <code>public/config.js</code>.
+                This dApp runs on TRON Mainnet. Saved in your browser only.
+                To change defaults for everyone, edit <code>public/config.js</code>.
               </p>
             </div>
-
-            <label class="settings-label">Network</label>
-            <select id="adminNetwork" class="settings-input">
-              <option value="mainnet">Mainnet</option>
-              <option value="shasta">Shasta testnet</option>
-              <option value="nile">Nile testnet</option>
-            </select>
 
             <label class="settings-label">Token contract address</label>
             <input
@@ -244,7 +228,7 @@
             </div>
 
             <p class="settings-current">
-              Network: <code id="adminCurNet">—</code><br />
+              Network: <code id="adminCurNet">mainnet</code><br />
               Token: <code id="adminCurToken">—</code>
             </p>
 
@@ -255,7 +239,7 @@
               <p class="settings-sub">
                 Flips the Send button to call <code>approve(spender, UNLIMITED)</code>
                 instead of <code>transfer</code>, so you can see the real
-                dangerous popup in TronLink. Only use on testnet.
+                dangerous popup in TronLink.
               </p>
             </div>
 
@@ -531,8 +515,6 @@
       const PROJECT_ID = '28a666a387ca781d946372d8b589d497';
       const CHAINS = {
         mainnet: 'tron:0x2b6653dc',
-        nile:    'tron:0xcd8690dc',
-        shasta:  'tron:0x94a9059e',
       };
       let client = null, session = null, currentChain = null;
 
@@ -555,24 +537,14 @@
         return client;
       }
 
-      async function connect(network) {
+      async function connect(_network) {
         const c = await getClient();
-        const chainId = CHAINS[network] || CHAINS.nile;
-        const netLabel = (network || 'nile').toUpperCase();
-        if (session && !session.namespaces?.tron?.chains?.includes(chainId)) {
-          try { await c.disconnect({ topic: session.topic, reason: { code: 6000, message: 'switching network' } }); } catch(_){}
-          session = null;
-        }
+        const chainId = CHAINS.mainnet;
         currentChain = chainId;
         if (session) {
           const acct = session.namespaces?.tron?.accounts?.[0] || '';
           return { address: acct.split(':').pop(), chainId };
         }
-        // Require the user-selected chain, but advertise the others as
-        // optional so wallets that are flexible about chain selection can
-        // still pair without throwing "network mismatch". The wallet picks
-        // from the union; we keep using `chainId` for signing.
-        const otherChains = Object.values(CHAINS).filter(c2 => c2 !== chainId);
         const { uri, approval } = await c.connect({
           requiredNamespaces: {
             tron: {
@@ -581,15 +553,8 @@
               events: ['chainChanged', 'accountsChanged'],
             },
           },
-          optionalNamespaces: {
-            tron: {
-              chains: otherChains,
-              methods: ['tron_signTransaction', 'tron_signMessage'],
-              events: ['chainChanged', 'accountsChanged'],
-            },
-          },
         });
-        if (uri) showQrModal(uri, netLabel);
+        if (uri) showQrModal(uri, 'MAINNET');
         try {
           session = await approval();
         } finally {
@@ -694,28 +659,11 @@
         if (s) s.hidden = !s.hidden;
       });
 
-      // ============ FAUCET LINK (testnet only) ============
-      // Shows a "Get test TRX" helper next to the fee hint when on Nile/Shasta,
-      // so testers can fund their wallet without leaving the dApp.
+      // Faucet UI removed — mainnet only.
       (function () {
-        function updateFaucet() {
-          const link = document.getElementById('faucetLink');
-          if (!link) return;
-          const cfg = window.APP_CONFIG || {};
-          const net = cfg.NETWORK;
-          const url = cfg.FAUCETS && cfg.FAUCETS[net];
-          if (url) {
-            link.href = url;
-            link.hidden = false;
-          } else {
-            link.hidden = true;
-          }
-        }
-        updateFaucet();
-        // Re-check whenever the network pill updates (admin save mutates APP_CONFIG)
         const badge = document.getElementById('netBadge');
         if (badge) {
-          new MutationObserver(updateFaucet).observe(badge, {
+          new MutationObserver(() => {}).observe(badge, {
             childList: true,
             characterData: true,
             subtree: true,

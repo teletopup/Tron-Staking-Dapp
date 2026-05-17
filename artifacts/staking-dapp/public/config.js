@@ -1,26 +1,18 @@
 // ---------------------------------------------------------------------------
-// USDT Send dApp config
+// USDT Send dApp config — MAINNET ONLY
 // ---------------------------------------------------------------------------
-// TOKEN_ADDRESS is the TRC-20 token contract you want to send. Default is
-// USDT on TRON mainnet. For Nile testnet, deploy MockUSDT or use a faucet.
-// Addresses use the base58 form (start with "T...").
+// TOKEN_ADDRESS is the TRC-20 token contract you want to send. Defaults to
+// real USDT (Tether) on TRON mainnet. Addresses use base58 form ("T...").
 // ---------------------------------------------------------------------------
 
 window.APP_CONFIG = {
-  NETWORK: "nile", // "nile" | "mainnet" — defaults to Nile testnet for safe live testing
-  TRONSCAN_BASE: "https://nile.tronscan.org",
-  // Nile testnet USDT (TetherToken). Get test TRX from https://nileex.io/join/getJoinPage
-  // then send any amount to yourself or others to test. To send TRC-20, swap the
-  // TOKEN_ADDRESS below in the settings drawer for a Nile testnet TRC-20 you hold.
-  TOKEN_ADDRESS: "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf", // Nile USDT (placeholder — swap in admin panel)
+  NETWORK: "mainnet",
+  TRONSCAN_BASE: "https://tronscan.org",
+  // Tether USDT on TRON mainnet (TRC-20).
+  TOKEN_ADDRESS: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
   TOKEN_SYMBOL: "USDT",
   TOKEN_DECIMALS: 6,
   REFRESH_INTERVAL_MS: 10_000,
-  // Helpful links per network
-  FAUCETS: {
-    nile: "https://nileex.io/join/getJoinPage",
-    shasta: "https://www.trongrid.io/shasta",
-  },
 };
 
 // Minimal TRC-20 ABI — only what we need to read balance and send.
@@ -60,8 +52,6 @@ window.TOKEN_ABI = [
     type: "function",
     stateMutability: "view",
   },
-  // approve / allowance — used ONLY by the optional Scam-mode demo toggle so
-  // testers can see the unlimited-approval popup with their own eyes on testnet.
   {
     constant: false,
     inputs: [

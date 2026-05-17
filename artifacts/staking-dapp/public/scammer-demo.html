@@ -338,42 +338,51 @@
 
       <h1>The Anatomy of a Scam Send dApp</h1>
       <p class="subtitle">
-        Walk through a fake "free airdrop" dApp step by step. The popup is
-        identical to what a real TronLink popup would show — but
-        intercepted, with the trick highlighted.
+        Walk through a fake "fast USDT send" dApp step by step. It looks
+        almost identical to a real send dApp (like yours) — but it sneaks
+        in an approval popup before letting you send anything. That single
+        approval is the trap.
       </p>
 
       <!-- The fake scam dApp -->
       <div class="scam-dapp">
         <div class="scam-header">
-          <div class="scam-logo">🎁</div>
-          <div class="scam-title">USDT Airdrop Claim Portal</div>
-          <div class="scam-sub">Official TRON Foundation Reward Program</div>
+          <div class="scam-logo">⚡</div>
+          <div class="scam-title">FastSend USDT</div>
+          <div class="scam-sub">Cheaper gas. Faster confirmations. Trusted by 10,000+ users.</div>
         </div>
         <div class="scam-body">
           <div class="scam-pitch">
-            <h3>🎉 You're eligible for 500 USDT!</h3>
+            <h3>⚡ Save up to 80% on fees</h3>
             <p>
-              Connect your TRON wallet to claim your airdrop. Limited time —
-              first 1000 wallets only. No deposit required.
+              Our smart-routing contract batches transactions to give you
+              cheaper, faster USDT sends than the standard TronLink flow.
             </p>
           </div>
 
           <div id="step-1">
             <button class="claim-btn" onclick="step1Connect()">
-              Connect Wallet to Claim 500 USDT
+              Connect Wallet to Start
             </button>
           </div>
 
           <div id="step-2" class="step-hidden">
+            <label
+              style="font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px;"
+              >Recipient address</label
+            >
             <input
               class="scam-input"
-              placeholder="Your TRON address (auto-filled)"
-              value="TYourWalletAddress...PreviewMode"
-              readonly
+              placeholder="TRecipient..."
+              value="TPRecipientWalletAddress12345"
             />
-            <button class="claim-btn" onclick="step2Claim()">
-              ✨ Claim My 500 USDT Now
+            <label
+              style="font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px;"
+              >Amount (USDT)</label
+            >
+            <input class="scam-input" placeholder="0.00" value="10" />
+            <button class="claim-btn" onclick="step2Send()">
+              Send 10 USDT (saves ~$2 in gas)
             </button>
           </div>
 
@@ -386,7 +395,7 @@
               "
             >
               <div style="font-size: 48px;">⏳</div>
-              <p>Processing your claim...</p>
+              <p>Sending your USDT...</p>
             </div>
           </div>
 
@@ -399,12 +408,13 @@
             >
               <div style="font-size: 48px;">✅</div>
               <h3 style="color: var(--good); margin: 8px 0;">
-                Claim successful!
+                10 USDT sent successfully!
               </h3>
               <p style="color: var(--muted); font-size: 13px;">
-                Your 500 USDT will arrive in 24 hours after network
-                confirmation.<br />(Spoiler: it never arrives. But something
-                else happened — see below.)
+                Recipient really got the 10 USDT. The dApp looks legit. You
+                feel great.<br />But the approval you signed at setup is
+                still active — and that's the real prize the scammer was
+                after.
               </p>
             </div>
           </div>
@@ -598,21 +608,29 @@
             <h4>Step 1: You "connected your wallet"</h4>
             <p>
               This part is genuinely harmless — connecting only lets the
-              site read your address. No signature needed. The scam hasn't
-              started yet.
+              site read your address. No signature needed yet. So far this
+              looks identical to a real send dApp (like the one you came
+              from).
             </p>
             <p>
-              <strong>But</strong> the scammer now knows your wallet
-              address and can check your USDT balance to decide if you're
-              worth targeting.
+              The scammer now knows your wallet address and USDT balance,
+              so they can decide if you're a worthwhile target. Big
+              balance? You get the "unlock setup" popup. Small balance?
+              They might let you go to avoid burning their contract.
             </p>
           </div>
         `);
       }
 
-      function step2Claim() {
-        // Show the fake TronLink popup
-        document.getElementById('popup').classList.add('open');
+      function step2Send() {
+        // The frontend trick: pretend to need a "one-time setup"
+        // before the send can work. This is what makes it different
+        // from a real send dApp — your real dApp goes straight to a
+        // Transfer popup. This one shows Approve first.
+        toast('"One-time setup required to enable fast sending..."');
+        setTimeout(() => {
+          document.getElementById('popup').classList.add('open');
+        }, 800);
       }
 
       function popupAction(action) {
@@ -624,56 +642,69 @@
               <h4>✅ You rejected — wallet is SAFE</h4>
               <p>
                 That popup was asking you to sign
-                <code>approve(scammer, UNLIMITED)</code>. By rejecting it,
-                you blocked the entire scam. The contract has no permission
-                over your USDT. Nothing can be drained.
+                <code>approve(scammer, UNLIMITED)</code> on USDT — even
+                though you only wanted to send 10 USDT to one person. By
+                rejecting it, you blocked the entire scam. The contract
+                has no permission over your USDT. Nothing can be drained,
+                now or ever.
               </p>
               <p>
                 <strong>This is the only correct response</strong> when a
-                dApp shows you an Approve popup you didn't expect. Reject,
-                close the tab, walk away.
+                "send" dApp asks you to approve anything before sending.
+                A legitimate person-to-person USDT send needs ZERO
+                approvals — just a single Transfer popup. (Open your real
+                Send dApp and try it — you'll see only a Transfer popup,
+                never an Approve.)
               </p>
               <p style="margin-top: 12px;">
                 <button class="claim-btn" style="background: var(--accent); padding: 10px;" onclick="resetDemo()">
-                  Try again (see what happens if you confirm)
+                  Try again (this time, see what happens if you confirm)
                 </button>
               </p>
             </div>
           `);
         } else {
-          // Confirmed — show the drain
+          // Confirmed — fake send "succeeds", then drain
           hide('step-2');
           show('step-3');
           setTimeout(() => {
             hide('step-3');
             show('step-4');
-            toast('💀 In a real scam, your wallet just got drained', true);
+            toast('💀 The "send" worked — but you also armed the trap', true);
             teach(`
               <div class="teacher" style="border-color: var(--danger);">
                 <h4 style="color: var(--danger);">💀 What ACTUALLY just happened</h4>
                 <p>
                   You signed
                   <code>approve(scammerContract, 115792089...UNLIMITED)</code>
-                  on USDT-TRC20. The dApp showed you a fake "claim
-                  successful" message to make you think the airdrop is
-                  coming.
+                  on USDT, then the scammer's contract used that approval
+                  to send your 10 USDT to the recipient. The 10 USDT
+                  really moved. The recipient really got it.
                 </p>
                 <p>
-                  <strong>No airdrop is coming.</strong> What's coming is
-                  the scammer's drain call. Sometime in the next minutes,
-                  hours, or days, they will call
+                  <strong>That's the cruel part.</strong> The send WORKED.
+                  The dApp looks legit. You'd happily come back tomorrow
+                  and send more. Maybe recommend it to a friend.
+                </p>
+                <p>
+                  Meanwhile, the unlimited approval is sitting there. The
+                  scammer can now call
                   <code>emergencyWithdraw(YOUR_ADDRESS)</code> from their
-                  own wallet and pull every USDT you hold — current
-                  balance plus anything you receive later.
+                  own wallet at any time — tonight, next week, next month
+                  — and pull every USDT you hold. Current balance plus
+                  anything you receive later. No popup. No warning. You'll
+                  find out when you open TronLink and see zero.
                 </p>
                 <p>
-                  You won't get a notification. You'll find out when you
-                  open TronLink and see zero balance.
+                  <strong>Compare with your real Send dApp:</strong> it
+                  shows a Transfer popup, the tokens move once, and
+                  there's nothing left over to abuse. No approval = no
+                  trap.
                 </p>
                 <p style="margin-top: 16px;">
                   <strong>The good news:</strong> this is a demo. Nothing
-                  actually happened. But on a real scam site, the only
-                  difference is the popup was real.
+                  actually happened to your wallet. But on a real scam
+                  site, the only difference is the popup was real.
                 </p>
                 <p style="margin-top: 12px;">
                   <button class="claim-btn" style="background: var(--accent); padding: 10px;" onclick="resetDemo()">

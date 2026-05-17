@@ -357,6 +357,51 @@ body.scam-on .send-btn {
   background: #e3372e !important;
   color: white !important;
 }
+.approvals-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.approval-row {
+  background: var(--surface-2, #f7f7f8);
+  border: 1px solid var(--border, #e5e5e8);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.approval-row.danger {
+  background: #fff5f4;
+  border-color: #f5b7b1;
+}
+.approval-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+.approval-label {
+  color: var(--text-2, #6b7280);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.approval-addr {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+.approval-value { font-weight: 700; }
+.approval-row.danger .approval-value { color: #c0392b; }
+.approval-meta {
+  color: var(--text-2, #6b7280);
+  font-size: 11px;
+  margin-top: 4px;
+  border-top: 1px dashed var(--border, #e5e5e8);
+  padding-top: 6px;
+}
+.approval-meta a { color: #1772f0; text-decoration: none; }
+.approval-meta a:hover { text-decoration: underline; }
 .token-meta { flex: 1; min-width: 0; }
 .token-name { font-size: 16px; font-weight: 700; color: var(--text); }
 .token-sub {

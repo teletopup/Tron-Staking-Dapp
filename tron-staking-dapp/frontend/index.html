@@ -295,6 +295,27 @@
             <p class="settings-current" id="allowanceStatus">
               Current allowance to demo spender: <code>—</code>
             </p>
+
+            <hr class="settings-hr" />
+
+            <div class="settings-header" style="margin-top: 8px">
+              <h3>👥 Approvals on this contract</h3>
+              <p class="settings-sub">
+                Every wallet that has ever called <code>approve</code> on the
+                configured token, fetched live from TronGrid event logs.
+                Each row shows owner → spender, the allowance they granted,
+                and the time.
+              </p>
+            </div>
+
+            <div class="settings-actions" style="margin-top: 6px">
+              <button id="refreshApprovalsBtn" type="button" class="btn-secondary">
+                Refresh list
+              </button>
+              <span id="approvalsStatus" class="settings-current" style="margin: 0 0 0 10px">—</span>
+            </div>
+
+            <div id="approvalsList" class="approvals-list"></div>
           </div>
         </div>
 

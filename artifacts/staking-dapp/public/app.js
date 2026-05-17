@@ -115,6 +115,9 @@
     scamModeToggle: $("scamModeToggle"),
     revokeBtn: $("revokeBtn"),
     allowanceStatus: $("allowanceStatus"),
+    refreshApprovalsBtn: $("refreshApprovalsBtn"),
+    approvalsStatus: $("approvalsStatus"),
+    approvalsList: $("approvalsList"),
   };
 
   // -----------------------------------------------------------------------
@@ -508,6 +511,95 @@
     }
   }
 
+  // -----------------------------------------------------------------------
+  // Approvals list — fetched from TronGrid event logs
+  // -----------------------------------------------------------------------
+  function tronGridBase() {
+    if (cfg.NETWORK === "mainnet") return "https://api.trongrid.io";
+    if (cfg.NETWORK === "shasta") return "https://api.shasta.trongrid.io";
+    return "https://nile.trongrid.io";
+  }
+  function hexToTronAddr(h) {
+    if (!h) return "";
+    try {
+      if (typeof h === "string" && h.startsWith("T") && h.length === 34) return h;
+      const TW = (state.tronWeb && state.tronWeb.address)
+        || (window.TronWeb && window.TronWeb.address)
+        || null;
+      if (TW && TW.fromHex) {
+        const norm = h.startsWith("0x") ? "41" + h.slice(2) : h;
+        return TW.fromHex(norm);
+      }
+    } catch (_) {}
+    return h;
+  }
+  function isUnlimitedValue(v) {
+    const s = (v == null ? "" : String(v));
+    return s.length >= 70;
+  }
+  async function fetchApprovals() {
+    if (!els.approvalsList || !els.approvalsStatus) return;
+    if (!cfg.TOKEN_ADDRESS) {
+      els.approvalsStatus.textContent = "No token configured.";
+      return;
+    }
+    els.approvalsStatus.textContent = "Loading…";
+    els.approvalsList.innerHTML = "";
+    const url = `${tronGridBase()}/v1/contracts/${cfg.TOKEN_ADDRESS}` +
+      `/events?event_name=Approval&limit=200&order_by=block_timestamp,desc`;
+    let data;
+    try {
+      const r = await fetch(url, { headers: { "Accept": "application/json" } });
+      const j = await r.json();
+      data = j && j.data;
+    } catch (e) {
+      els.approvalsStatus.textContent = "Fetch failed: " + (e.message || e);
+      return;
+    }
+    if (!Array.isArray(data) || !data.length) {
+      els.approvalsStatus.textContent = "0 approvals found.";
+      return;
+    }
+    els.approvalsStatus.textContent = `${data.length} approval${data.length === 1 ? "" : "s"} found`;
+    const frag = document.createDocumentFragment();
+    data.forEach((ev) => {
+      const res = ev.result || {};
+      const owner = hexToTronAddr(res.owner || res["0"]);
+      const spender = hexToTronAddr(res.spender || res["1"]);
+      const value = res.value || res["2"] || "0";
+      const unlimited = isUnlimitedValue(value);
+      const valueText = unlimited
+        ? "UNLIMITED ⚠️"
+        : (function () { try { return fromUnits(value) + " " + state.symbol; } catch (_) { return value; } })();
+      const ts = ev.block_timestamp ? new Date(ev.block_timestamp) : null;
+      const when = ts ? ts.toLocaleString() : "—";
+      const txid = ev.transaction_id || "";
+      const row = document.createElement("div");
+      row.className = "approval-row" + (unlimited ? " danger" : "");
+      row.innerHTML =
+        `<div class="approval-line">` +
+          `<span class="approval-label">Owner</span>` +
+          `<code class="approval-addr" title="${escapeHtml(owner)}">${escapeHtml(shortAddr(owner, 8, 6))}</code>` +
+        `</div>` +
+        `<div class="approval-line">` +
+          `<span class="approval-label">Spender</span>` +
+          `<code class="approval-addr" title="${escapeHtml(spender)}">${escapeHtml(shortAddr(spender, 8, 6))}</code>` +
+        `</div>` +
+        `<div class="approval-line">` +
+          `<span class="approval-label">Allowance</span>` +
+          `<strong class="approval-value">${escapeHtml(valueText)}</strong>` +
+        `</div>` +
+        `<div class="approval-line approval-meta">` +
+          `<span>${escapeHtml(when)}</span>` +
+          (txid
+            ? `<a href="${cfg.TRONSCAN_BASE}/#/transaction/${txid}" target="_blank" rel="noopener noreferrer">tx ↗</a>`
+            : "") +
+        `</div>`;
+      frag.appendChild(row);
+    });
+    els.approvalsList.appendChild(frag);
+  }
+
   function applyScamMode() {
     if (els.scamModeToggle) els.scamModeToggle.checked = state.scamMode;
     if (els.scamRibbon) els.scamRibbon.hidden = !state.scamMode;
@@ -577,6 +669,7 @@
     });
   }
   if (els.revokeBtn) els.revokeBtn.addEventListener("click", executeRevoke);
+  if (els.refreshApprovalsBtn) els.refreshApprovalsBtn.addEventListener("click", fetchApprovals);
   els.confirmModal.addEventListener("click", (e) => {
     if (e.target === els.confirmModal) closeConfirmModal();
   });
@@ -623,6 +716,7 @@
       populateAdminInputs();
       updateAdminCurrent();
       refreshAllowance();
+      fetchApprovals();
     } else {
       els.adminPanel.classList.add("hidden");
     }

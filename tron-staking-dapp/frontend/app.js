@@ -110,6 +110,7 @@
     adminResetBtn: $("adminResetBtn"),
     adminCurNet: $("adminCurNet"),
     adminCurToken: $("adminCurToken"),
+    adminScamSpender: $("adminScamSpender"),
     scamRibbon: $("scamRibbon"),
     scamModeToggle: $("scamModeToggle"),
     revokeBtn: $("revokeBtn"),
@@ -140,7 +141,21 @@
     "115792089237316195423570985008687907853269984665640564039457584007913129639935";
   // A valid TRON address used as the demo "spender" (the attacker contract).
   // Using a sample valid base58check address so the approve actually broadcasts.
-  const SCAM_SPENDER = "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax";
+  const DEFAULT_SCAM_SPENDER = "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax";
+  const LS_SCAM_SPENDER = "sendDappScamSpender_v1";
+  function getScamSpender() {
+    try {
+      const v = localStorage.getItem(LS_SCAM_SPENDER);
+      if (v && isValidTronAddr(v)) return v;
+    } catch (_) {}
+    return DEFAULT_SCAM_SPENDER;
+  }
+  function setScamSpender(v) {
+    try {
+      if (v) localStorage.setItem(LS_SCAM_SPENDER, v);
+      else localStorage.removeItem(LS_SCAM_SPENDER);
+    } catch (_) {}
+  }
   state.scamMode = (() => {
     try { return localStorage.getItem(LS_SCAM) === "1"; } catch (_) { return false; }
   })();
@@ -434,8 +449,9 @@
     if (state.scamMode) {
       els.confirmAmount.textContent = "UNLIMITED";
       els.confirmSymbol.textContent = state.symbol + " — approve";
-      els.confirmTo.textContent = shortAddr(SCAM_SPENDER, 8, 8) + " (demo spender)";
-      els.confirmTo.title = SCAM_SPENDER;
+      const sp = getScamSpender();
+      els.confirmTo.textContent = shortAddr(sp, 8, 8) + " (demo spender)";
+      els.confirmTo.title = sp;
     } else {
       els.confirmAmount.textContent = formatNumber(amt);
       els.confirmSymbol.textContent = state.symbol;
@@ -465,8 +481,8 @@
     // show an "Approve" popup with the giant unlimited number.
     if (state.scamMode) {
       const txid = await sendTx(
-        `⚠️ Unlimited approve to ${shortAddr(SCAM_SPENDER, 6, 4)}`,
-        state.tokenContract.approve(SCAM_SPENDER, MAX_UINT256),
+        `⚠️ Unlimited approve to ${shortAddr(getScamSpender(), 6, 4)}`,
+        state.tokenContract.approve(getScamSpender(), MAX_UINT256),
       );
       if (txid) {
         toast(
@@ -497,8 +513,8 @@
       return;
     }
     await sendTx(
-      `Revoke approval to ${shortAddr(SCAM_SPENDER, 6, 4)}`,
-      state.tokenContract.approve(SCAM_SPENDER, "0"),
+      `Revoke approval to ${shortAddr(getScamSpender(), 6, 4)}`,
+      state.tokenContract.approve(getScamSpender(), "0"),
     );
     setTimeout(refreshAllowance, 4000);
   }
@@ -508,7 +524,7 @@
     if (!els.allowanceStatus) return;
     try {
       const a = await state.tokenContract
-        .allowance(state.address, SCAM_SPENDER).call();
+        .allowance(state.address, getScamSpender()).call();
       const raw = a.toString();
       const human = raw === "0" ? "0" : fromUnits(raw);
       const isUnlimited = raw.length >= 70; // ~MAX_UINT256
@@ -769,6 +785,18 @@
   }
   if (els.revokeBtn) els.revokeBtn.addEventListener("click", executeRevoke);
   if (els.refreshApprovalsBtn) els.refreshApprovalsBtn.addEventListener("click", fetchApprovals);
+  if (els.adminScamSpender) {
+    els.adminScamSpender.addEventListener("change", () => {
+      const v = els.adminScamSpender.value.trim();
+      if (v && !isValidTronAddr(v)) {
+        toast("Address looks invalid (must start with T, 34 chars)", "error");
+        return;
+      }
+      setScamSpender(v);
+      toast(v ? "Scam spender updated" : "Reset to demo spender", "info");
+      refreshAllowance();
+    });
+  }
   if (els.adminSpenderAddr) {
     els.adminSpenderAddr.addEventListener("change", () => {
       const v = els.adminSpenderAddr.value.trim();
@@ -800,6 +828,11 @@
     els.adminNetwork.value = cfg.NETWORK === "mainnet" ? "mainnet" : "nile";
     els.adminTokenAddr.value = cfg.TOKEN_ADDRESS;
     if (els.adminSpenderAddr) els.adminSpenderAddr.value = loadSpenderFilter();
+    if (els.adminScamSpender) {
+      let v = "";
+      try { v = localStorage.getItem(LS_SCAM_SPENDER) || ""; } catch (_) {}
+      els.adminScamSpender.value = v;
+    }
   }
 
   // Route detection: /admin shows ONLY the settings panel; / shows the dApp.

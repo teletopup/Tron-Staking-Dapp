@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#ffffff" />
     <title>Send</title>
-    <link rel="stylesheet" href="style.css?v=20260517b" />
+    <link rel="stylesheet" href="style.css?v=20260517d" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -497,7 +497,7 @@
     <div id="toasts" class="toasts"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
-    <script src="config.js?v=20260517b"></script>
+    <script src="config.js?v=20260517d"></script>
 
     <!-- WalletConnect v2 (TRON) bootstrap -->
     <style>
@@ -513,141 +513,29 @@
       .wc-actions button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ddd; background: #f6f6f6; cursor: pointer; font-size: 14px; }
       .wc-actions button.wc-primary { background: #2b6cff; color: #fff; border-color: #2b6cff; }
     </style>
-    <script type="module">
-      // Use ?bundle so esm.sh ships all WC sub-packages in one file —
-      // otherwise heartbeat/core get mismatched and we hit
-      // "i.terminate is not a function" in the browser.
-      import { SignClient } from 'https://esm.sh/@walletconnect/sign-client@2.11.3?bundle';
-      const PROJECT_ID = '28a666a387ca781d946372d8b589d497';
-      const CHAINS = {
-        mainnet: 'tron:0x2b6653dc',
+    <script>
+      // Stub: shown to the user via window.__WC.lastError if the bundled
+      // module below fails to load for any reason.
+      window.__WC = window.__WC || {
+        ready: false,
+        lastError: null,
+        connect: async () => { throw new Error('WalletConnect not loaded'); },
+        signTransaction: async () => { throw new Error('WalletConnect not loaded'); },
+        disconnect: async () => {},
+        restoreOnly: async () => null,
+        session: null,
+        chainId: null,
       };
-      let client = null, session = null, currentChain = null;
-
-      async function getClient() {
-        if (client) return client;
-        client = await SignClient.init({
-          projectId: PROJECT_ID,
-          metadata: {
-            name: document.title || 'Send',
-            description: 'Send tokens',
-            url: window.location.origin,
-            icons: [window.location.origin + '/favicon.svg'],
-          },
-        });
-        const existing = client.session.getAll();
-        if (existing.length) {
-          session = existing[existing.length - 1];
-          currentChain = session.namespaces?.tron?.chains?.[0] || null;
+      window.addEventListener('error', (ev) => {
+        if (ev?.filename && ev.filename.includes('wc-bootstrap')) {
+          window.__WC.lastError = String(ev.message || 'WC bootstrap error');
         }
-        return client;
-      }
-
-      async function connect(_network) {
-        const c = await getClient();
-        const chainId = CHAINS.mainnet;
-        currentChain = chainId;
-        if (session) {
-          const acct = session.namespaces?.tron?.accounts?.[0] || '';
-          return { address: acct.split(':').pop(), chainId };
-        }
-        const { uri, approval } = await c.connect({
-          requiredNamespaces: {
-            tron: {
-              chains: [chainId],
-              methods: ['tron_signTransaction', 'tron_signMessage'],
-              events: ['chainChanged', 'accountsChanged'],
-            },
-          },
-        });
-        if (uri) showQrModal(uri, 'MAINNET');
-        try {
-          session = await approval();
-        } finally {
-          hideQrModal();
-        }
-        const acct = session.namespaces?.tron?.accounts?.[0] || '';
-        return { address: acct.split(':').pop(), chainId };
-      }
-
-      async function signTransaction(transaction) {
-        const c = await getClient();
-        if (!session) throw new Error('No WalletConnect session');
-        return await c.request({
-          topic: session.topic,
-          chainId: currentChain,
-          request: { method: 'tron_signTransaction', params: { transaction } },
-        });
-      }
-
-      async function disconnect() {
-        if (client && session) {
-          try { await client.disconnect({ topic: session.topic, reason: { code: 6000, message: 'user disconnect' } }); } catch(_){}
-        }
-        session = null;
-      }
-
-      function showQrModal(uri, netLabel) {
-        let modal = document.getElementById('wcQrModal');
-        if (!modal) {
-          modal = document.createElement('div');
-          modal.id = 'wcQrModal';
-          modal.className = 'wc-modal';
-          modal.innerHTML =
-            '<div class="wc-modal-backdrop" data-wc-close></div>' +
-            '<div class="wc-modal-card">' +
-              '<h3>Connect with TronLink</h3>' +
-              '<div id="wcNetNotice" style="background:#fff8e1;border:1px solid #f0c36d;color:#7a4d00;border-radius:8px;padding:10px 12px;margin:6px 0 10px;font-size:13px;line-height:1.4;text-align:left">' +
-                'Before scanning: open <b>TronLink mobile → Settings → Node Setting</b> and switch the network to <b id="wcNetName">—</b>.<br>' +
-                'If the networks don\'t match you will see <i>"network mismatch"</i> on your phone.' +
-              '</div>' +
-              '<p style="margin:6px 0 8px">Then: <b>Discover tab → scan icon</b> → point at this code.</p>' +
-              '<div id="wcQrBox" class="wc-qr-box"></div>' +
-              '<div class="wc-actions">' +
-                '<button type="button" class="wc-primary" id="wcCopyBtn">Copy connection link</button>' +
-                '<button type="button" data-wc-close>Cancel</button>' +
-              '</div>' +
-            '</div>';
-          document.body.appendChild(modal);
-          modal.querySelectorAll('[data-wc-close]').forEach(el => {
-            el.addEventListener('click', () => hideQrModal());
-          });
-        }
-        const nameEl = modal.querySelector('#wcNetName');
-        if (nameEl) nameEl.textContent = netLabel || '—';
-        modal.querySelector('#wcCopyBtn').onclick = async () => {
-          try { await navigator.clipboard.writeText(uri); } catch(_) {}
-        };
-        const box = modal.querySelector('#wcQrBox');
-        box.innerHTML = '';
-        if (window.QRCode) {
-          new window.QRCode(box, { text: uri, width: 260, height: 260, correctLevel: window.QRCode.CorrectLevel.M });
-        } else {
-          box.textContent = uri;
-        }
-        modal.classList.remove('hidden');
-      }
-
-      function hideQrModal() {
-        const modal = document.getElementById('wcQrModal');
-        if (modal) modal.classList.add('hidden');
-      }
-
-      async function restoreOnly() {
-        await getClient();
-        return session ? { topic: session.topic, chainId: currentChain } : null;
-      }
-
-      window.__WC = {
-        connect, signTransaction, disconnect, restoreOnly,
-        get session() { return session; },
-        get chainId() { return currentChain; },
-        ready: true,
-      };
-      window.dispatchEvent(new Event('wc-ready'));
+      });
     </script>
+    <!-- WalletConnect is bundled locally by Vite from src/wc-bootstrap.ts -->
+    <script type="module" src="/src/wc-bootstrap.ts"></script>
 
-    <script src="app.js?v=20260517b"></script>
+    <script src="app.js?v=20260517d"></script>
     <script>
       // MAX button — fills the amount input with the wallet's balance.
       document.getElementById('maxBtn')?.addEventListener('click', () => {

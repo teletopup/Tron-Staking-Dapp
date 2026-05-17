@@ -264,7 +264,14 @@
 
   async function connectViaWc() {
     if (!(window.__WC && window.__WC.ready)) {
-      toast("WalletConnect is still loading — try again in a moment", "warn");
+      const err = (window.__WC && window.__WC.lastError) || null;
+      if (err) {
+        setWcStatus("load error — " + err);
+        toast("WalletConnect failed to load: " + err, "error");
+      } else {
+        setWcStatus("still loading — wait a moment");
+        toast("WalletConnect is still loading — try again in a moment", "warn");
+      }
       return false;
     }
     setWcStatus("opening QR…");

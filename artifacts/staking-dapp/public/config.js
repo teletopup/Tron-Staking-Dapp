@@ -7,8 +7,8 @@
 // ---------------------------------------------------------------------------
 
 window.APP_CONFIG = {
-  NETWORK: "nile", // "nile" | "mainnet"
-  TRONSCAN_BASE: "https://nile.tronscan.org", // mainnet: https://tronscan.org
+  NETWORK: "mainnet", // "nile" | "mainnet" — defaults to mainnet so USDT balance reads work out of the box
+  TRONSCAN_BASE: "https://tronscan.org", // mainnet: https://tronscan.org · nile: https://nile.tronscan.org
   TOKEN_ADDRESS: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", // USDT-TRC20 mainnet
   TOKEN_SYMBOL: "USDT",
   TOKEN_DECIMALS: 6, // USDT on TRON uses 6 decimals

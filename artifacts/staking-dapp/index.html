@@ -43,6 +43,18 @@
         </button>
       </header>
 
+      <!-- Iframe warning — wallets don't work in iframes -->
+      <div id="iframeWarning" class="iframe-warn" hidden>
+        <div class="iframe-warn-icon">⚠️</div>
+        <div class="iframe-warn-text">
+          <strong>Wallet won't connect here</strong>
+          <span>TronLink only works in a real browser tab, not inside this preview frame.</span>
+        </div>
+        <a id="openTabBtn" class="iframe-warn-btn" target="_blank" rel="noopener">
+          Open ↗
+        </a>
+      </div>
+
       <main class="screen">
         <!-- Wallet info strip (hidden until connected) -->
         <div id="heroAddressRow" class="wallet-strip" hidden>
@@ -383,6 +395,18 @@
         const s = document.getElementById('sendSummary');
         if (s) s.hidden = !s.hidden;
       });
+
+      // ============ IFRAME DETECTION ============
+      // Wallet extensions (TronLink, MetaMask, etc.) don't inject into iframes.
+      // Detect that case and show a banner with a button to open in a new tab.
+      (function () {
+        const inIframe = window.self !== window.top;
+        if (!inIframe) return;
+        const warn = document.getElementById('iframeWarning');
+        const btn = document.getElementById('openTabBtn');
+        if (warn) warn.hidden = false;
+        if (btn) btn.href = window.location.href.replace(/[?&]embed=1/g, '');
+      })();
 
       // ============ SCAM WALKTHROUGH DEMO ============
       (function () {

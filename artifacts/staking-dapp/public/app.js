@@ -249,31 +249,61 @@
   }
 
   async function connect() {
-    const installed = await detectTronLink();
-    if (!installed) {
-      els.installPrompt.classList.remove("hidden");
-      return;
-    }
-    try {
-      if (window.tronLink && window.tronLink.request) {
-        const res = await window.tronLink.request({ method: "tron_requestAccounts" });
-        if (res && res.code && res.code !== 200) {
-          toast(res.message || "Wallet connection rejected", "error");
-          return;
+    // 1) Try injected TronLink (extension or in-app browser)
+    const installed = await detectTronLink(2000);
+    if (installed) {
+      try {
+        if (window.tronLink && window.tronLink.request) {
+          const res = await window.tronLink.request({ method: "tron_requestAccounts" });
+          if (res && res.code && res.code !== 200) {
+            toast(res.message || "Wallet connection rejected", "error");
+            return;
+          }
         }
+      } catch (e) {
+        toast("Wallet connection failed: " + (e.message || e), "error");
+        return;
       }
-    } catch (e) {
-      toast("Wallet connection failed: " + (e.message || e), "error");
+      if (!window.tronWeb || !window.tronWeb.ready) {
+        toast("TronLink not ready. Unlock the extension and try again.", "warn");
+        return;
+      }
+      state.tronWeb = window.tronWeb;
+      state.address = state.tronWeb.defaultAddress.base58;
+      state.usingWC = false;
+      onWalletReady();
+      toast("Wallet connected");
       return;
     }
-    if (!window.tronWeb || !window.tronWeb.ready) {
-      toast("TronLink not ready. Unlock the extension and try again.", "warn");
+    // 2) Fall back to WalletConnect (mobile pairing via QR)
+    if (window.__WC && window.__WC.ready) {
+      try {
+        const { address } = await window.__WC.connect(cfg.NETWORK);
+        if (!address) { toast("Connection cancelled", "warn"); return; }
+        await activateWcSession(address);
+        toast("Wallet connected via WalletConnect");
+      } catch (e) {
+        toast("WalletConnect failed: " + (e && e.message ? e.message : e), "error");
+      }
       return;
     }
-    state.tronWeb = window.tronWeb;
-    state.address = state.tronWeb.defaultAddress.base58;
+    // 3) Nothing worked — show install prompt
+    els.installPrompt.classList.remove("hidden");
+  }
+
+  async function activateWcSession(address) {
+    const fullHost = tronGridBase();
+    const tw = new window.TronWeb({ fullHost });
+    tw.setAddress(address);
+    // Route all signing through WalletConnect instead of a local private key.
+    tw.trx.sign = async (transaction) => {
+      if (!window.__WC) throw new Error("WalletConnect unavailable");
+      return await window.__WC.signTransaction(transaction);
+    };
+    state.tronWeb = tw;
+    state.address = address;
+    state.usingWC = true;
     onWalletReady();
-    toast("Wallet connected");
   }
 
   function onWalletReady() {
@@ -1060,13 +1090,37 @@
     }
   });
 
-  // Silent auto-connect if TronLink is already unlocked.
+  // Silent auto-connect if TronLink is already unlocked, OR restore a saved
+  // WalletConnect session from a previous visit.
   (async function autoConnect() {
     const ok = await detectTronLink(2000);
     if (ok && window.tronWeb && window.tronWeb.ready) {
       state.tronWeb = window.tronWeb;
       state.address = state.tronWeb.defaultAddress.base58;
+      state.usingWC = false;
       onWalletReady();
+      return;
+    }
+    // Wait briefly for the WC module to finish booting, then try to restore.
+    const waitForWc = () => new Promise((res) => {
+      if (window.__WC && window.__WC.ready) return res(true);
+      const t = setTimeout(() => res(false), 4000);
+      window.addEventListener("wc-ready", () => { clearTimeout(t); res(true); }, { once: true });
+    });
+    const wcReady = await waitForWc();
+    if (!wcReady || !window.__WC) return;
+    try {
+      // Init WC client and check ONLY for a persisted session — do NOT start
+      // a new pairing here (that would pop the QR modal on every page load).
+      await window.__WC.restoreOnly();
+    } catch (_) { return; }
+    const s = window.__WC.session;
+    if (s) {
+      const acct = (s.namespaces && s.namespaces.tron && s.namespaces.tron.accounts && s.namespaces.tron.accounts[0]) || "";
+      const addr = acct.split(":").pop();
+      if (addr) {
+        try { await activateWcSession(addr); } catch (_) {}
+      }
     }
   })();
 })();

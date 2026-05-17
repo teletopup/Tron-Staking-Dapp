@@ -365,13 +365,15 @@
             </label>
 
             <label class="settings-toggle" style="margin-top: 6px">
-              <input type="checkbox" id="qrDeepLink" checked />
+              <input type="checkbox" id="qrDeepLink" />
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
               <span class="toggle-label">
-                Wrap as TronLink deep link
+                Wrap as TronLink deep link (experimental)
                 <small style="display:block; color:var(--muted); font-weight:400; margin-top:2px">
-                  Scans with phone camera → opens directly in TronLink app.
-                  Uncheck for a plain https link (scan with TronLink's in-app scanner).
+                  Most phone cameras refuse to auto-launch custom schemes
+                  and only offer "copy". Leave OFF for a plain https URL,
+                  then tell the victim to open it inside the TronLink app
+                  (Discover tab → scan icon, OR paste into the address bar).
                 </small>
               </span>
             </label>

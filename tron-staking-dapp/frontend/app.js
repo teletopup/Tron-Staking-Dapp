@@ -7,10 +7,11 @@
   const DEFAULT_TOKEN_ABI = window.TOKEN_ABI;
 
   // -----------------------------------------------------------------------
-  // Admin overrides (localStorage)
+  // Storage keys
   // -----------------------------------------------------------------------
 
   const LS_KEY = "sendDappOverrides_v1";
+  const LS_RECENTS = "sendDappRecents_v1";
   const DEFAULTS = {
     NETWORK: cfg.NETWORK,
     TRONSCAN_BASE: cfg.TRONSCAN_BASE,
@@ -34,6 +35,21 @@
   }
   loadOverrides();
 
+  function loadRecents() {
+    try {
+      const raw = localStorage.getItem(LS_RECENTS);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.slice(0, 5) : [];
+    } catch (_) { return []; }
+  }
+  function pushRecent(addr) {
+    let list = loadRecents().filter((a) => a !== addr);
+    list.unshift(addr);
+    list = list.slice(0, 5);
+    try { localStorage.setItem(LS_RECENTS, JSON.stringify(list)); } catch (_) {}
+    renderRecents();
+  }
+
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
@@ -45,6 +61,7 @@
     refreshTimer: null,
     decimals: cfg.TOKEN_DECIMALS,
     symbol: cfg.TOKEN_SYMBOL,
+    rawBalance: "0",
   };
 
   // -----------------------------------------------------------------------
@@ -55,16 +72,36 @@
   const els = {
     netBadge: $("netBadge"),
     connectBtn: $("connectBtn"),
-    statBalance: $("statBalance"),
-    statTrx: $("statTrx"),
-    statAddress: $("statAddress"),
+    tokenLogo: $("tokenLogo"),
+    tokenName: $("tokenName"),
+    heroBalance: $("heroBalance"),
+    heroTrx: $("heroTrx"),
+    heroAddressRow: $("heroAddressRow"),
+    heroAddress: $("heroAddress"),
+    copyAddrBtn: $("copyAddrBtn"),
     recipientInput: $("recipientInput"),
+    pasteBtn: $("pasteBtn"),
+    addrCheck: $("addrCheck"),
+    addrHint: $("addrHint"),
+    recents: $("recents"),
+    recentsList: $("recentsList"),
     amountInput: $("amountInput"),
     amountSuffix: $("amountSuffix"),
-    maxBtn: $("maxBtn"),
+    amountAvailable: $("amountAvailable"),
+    sendSummary: $("sendSummary"),
+    summarySend: $("summarySend"),
+    summaryReceive: $("summaryReceive"),
     sendBtn: $("sendBtn"),
     installPrompt: $("installPrompt"),
     toasts: $("toasts"),
+    confirmModal: $("confirmModal"),
+    confirmAmount: $("confirmAmount"),
+    confirmSymbol: $("confirmSymbol"),
+    confirmFrom: $("confirmFrom"),
+    confirmTo: $("confirmTo"),
+    confirmNet: $("confirmNet"),
+    confirmCancelBtn: $("confirmCancelBtn"),
+    confirmSendBtn: $("confirmSendBtn"),
     adminToggle: $("adminToggle"),
     adminPanel: $("adminPanel"),
     adminNetwork: $("adminNetwork"),
@@ -121,7 +158,6 @@
     if (frac.length > 4) frac = frac.slice(0, 4);
     return frac ? `${intPart}.${frac}` : intPart;
   }
-
   function toUnits(human) {
     if (!human || isNaN(Number(human))) throw new Error("Invalid amount");
     const [intPart, fracRaw = ""] = String(human).split(".");
@@ -130,14 +166,17 @@
     if (joined === "" || joined === "0") throw new Error("Amount must be > 0");
     return joined;
   }
-
-  function shortAddr(a) {
+  function shortAddr(a, head = 6, tail = 6) {
     if (!a) return "";
-    return a.slice(0, 6) + "…" + a.slice(-4);
+    return a.slice(0, head) + "…" + a.slice(-tail);
   }
-
   function isValidTronAddr(s) {
     return typeof s === "string" && /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(s.trim());
+  }
+  function formatNumber(s) {
+    const [i, f] = s.split(".");
+    const withCommas = i.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return f != null ? `${withCommas}.${f}` : withCommas;
   }
 
   // -----------------------------------------------------------------------
@@ -177,12 +216,17 @@
     }
     state.tronWeb = window.tronWeb;
     state.address = state.tronWeb.defaultAddress.base58;
-    els.connectBtn.textContent = shortAddr(state.address);
-    els.statAddress.textContent = state.address;
-    await initContracts();
-    await refresh();
-    startAutoRefresh();
+    onWalletReady();
     toast("Wallet connected");
+  }
+
+  function onWalletReady() {
+    els.connectBtn.textContent = shortAddr(state.address, 4, 4);
+    els.heroAddress.textContent = shortAddr(state.address, 8, 8);
+    els.heroAddressRow.hidden = false;
+    initContracts().then(refresh).catch((e) => console.error(e));
+    startAutoRefresh();
+    updateSendButton();
   }
 
   async function initContracts() {
@@ -195,6 +239,8 @@
       const sym = await state.tokenContract.symbol().call();
       state.symbol = sym;
       els.amountSuffix.textContent = sym;
+      els.tokenName.textContent = sym;
+      els.tokenLogo.textContent = sym.charAt(0);
     } catch (_) {}
   }
 
@@ -209,9 +255,12 @@
         state.tokenContract.balanceOf(state.address).call(),
         state.tronWeb.trx.getBalance(state.address),
       ]);
-      els.statBalance.textContent = `${fromUnits(bal)} ${state.symbol}`;
-      // TRX has 6 decimals (SUN)
-      els.statTrx.textContent = `${fromUnits(trxSun.toString(), 6)} TRX`;
+      state.rawBalance = bal.toString();
+      const human = fromUnits(bal);
+      els.heroBalance.innerHTML = `${formatNumber(human)} <span class="hero-balance-sym">${state.symbol}</span>`;
+      els.heroTrx.textContent = `${formatNumber(fromUnits(trxSun.toString(), 6))} TRX`;
+      els.amountAvailable.textContent = `Available: ${formatNumber(human)} ${state.symbol}`;
+      updateSummary();
     } catch (e) {
       console.error("refresh failed:", e);
     }
@@ -223,16 +272,106 @@
   }
 
   // -----------------------------------------------------------------------
-  // Tx helpers
+  // Recents
   // -----------------------------------------------------------------------
 
-  function requireConnected() {
-    if (!state.tronWeb || !state.address) {
-      toast("Connect your wallet first", "warn");
-      return false;
-    }
-    return true;
+  function renderRecents() {
+    const list = loadRecents();
+    if (!list.length) { els.recents.hidden = true; return; }
+    els.recents.hidden = false;
+    els.recentsList.innerHTML = "";
+    list.forEach((addr) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "recent-pill";
+      btn.title = addr;
+      btn.textContent = shortAddr(addr, 6, 4);
+      btn.addEventListener("click", () => {
+        els.recipientInput.value = addr;
+        onRecipientInput();
+        els.amountInput.focus();
+      });
+      els.recentsList.appendChild(btn);
+    });
   }
+
+  // -----------------------------------------------------------------------
+  // Live validation & send button state
+  // -----------------------------------------------------------------------
+
+  function onRecipientInput() {
+    const v = els.recipientInput.value.trim();
+    if (!v) {
+      els.addrCheck.className = "addr-check";
+      els.addrHint.textContent = "";
+    } else if (!isValidTronAddr(v)) {
+      els.addrCheck.className = "addr-check invalid";
+      els.addrCheck.textContent = "✕";
+      els.addrHint.textContent = "Not a valid TRON address (must start with T, 34 chars)";
+      els.addrHint.className = "field-hint err";
+    } else if (state.address && v === state.address) {
+      els.addrCheck.className = "addr-check invalid";
+      els.addrCheck.textContent = "✕";
+      els.addrHint.textContent = "This is your own address";
+      els.addrHint.className = "field-hint err";
+    } else {
+      els.addrCheck.className = "addr-check valid";
+      els.addrCheck.textContent = "✓";
+      els.addrHint.textContent = "Address looks valid";
+      els.addrHint.className = "field-hint ok";
+    }
+    updateSendButton();
+    updateSummary();
+  }
+
+  function onAmountInput() {
+    updateSendButton();
+    updateSummary();
+  }
+
+  function readyToSend() {
+    if (!state.tronWeb || !state.address) return { ok: false, reason: "Connect wallet" };
+    const to = els.recipientInput.value.trim();
+    if (!to) return { ok: false, reason: "Enter recipient & amount" };
+    if (!isValidTronAddr(to)) return { ok: false, reason: "Invalid recipient address" };
+    if (to === state.address) return { ok: false, reason: "Can't send to yourself" };
+    const amt = els.amountInput.value;
+    if (!amt || Number(amt) <= 0) return { ok: false, reason: "Enter an amount" };
+    try {
+      const units = toUnits(amt);
+      // Compare to balance
+      const u = state.tronWeb ? state.tronWeb.toBigNumber(units) : null;
+      const b = state.tronWeb ? state.tronWeb.toBigNumber(state.rawBalance) : null;
+      if (u && b && u.gt(b)) return { ok: false, reason: "Insufficient balance" };
+    } catch (e) {
+      return { ok: false, reason: "Invalid amount" };
+    }
+    return { ok: true };
+  }
+
+  function updateSendButton() {
+    const r = readyToSend();
+    if (r.ok) {
+      els.sendBtn.disabled = false;
+      els.sendBtn.textContent = `Send ${els.amountInput.value} ${state.symbol}`;
+    } else {
+      els.sendBtn.disabled = true;
+      els.sendBtn.textContent = r.reason;
+    }
+  }
+
+  function updateSummary() {
+    const r = readyToSend();
+    if (!r.ok) { els.sendSummary.hidden = true; return; }
+    els.sendSummary.hidden = false;
+    const amt = formatNumber(els.amountInput.value || "0");
+    els.summarySend.textContent = `${amt} ${state.symbol}`;
+    els.summaryReceive.textContent = `${amt} ${state.symbol}`;
+  }
+
+  // -----------------------------------------------------------------------
+  // Tx helpers
+  // -----------------------------------------------------------------------
 
   async function sendTx(label, builder) {
     try {
@@ -241,56 +380,88 @@
       toast(`${label} submitted`, undefined, txid);
       setTimeout(refresh, 4000);
       setTimeout(refresh, 12000);
+      return txid;
     } catch (e) {
       const msg = (e && (e.message || e.error)) || String(e);
       toast(`${label} failed: ${msg}`, "error");
+      return null;
     }
   }
 
   // -----------------------------------------------------------------------
-  // Actions
+  // Send flow with modal confirmation
   // -----------------------------------------------------------------------
 
-  async function onSend() {
-    if (!requireConnected()) return;
-
+  function openConfirmModal() {
+    const r = readyToSend();
+    if (!r.ok) { toast(r.reason, "warn"); return; }
     const to = els.recipientInput.value.trim();
-    if (!isValidTronAddr(to)) {
-      toast("Recipient address looks invalid (must start with T, 34 chars)", "error");
-      return;
-    }
-    if (to === state.address) {
-      toast("You can't send to your own wallet", "warn");
-      return;
-    }
+    const amt = els.amountInput.value;
+    els.confirmAmount.textContent = formatNumber(amt);
+    els.confirmSymbol.textContent = state.symbol;
+    els.confirmFrom.textContent = shortAddr(state.address, 8, 8);
+    els.confirmFrom.title = state.address;
+    els.confirmTo.textContent = shortAddr(to, 8, 8);
+    els.confirmTo.title = to;
+    els.confirmNet.textContent = cfg.NETWORK === "mainnet" ? "TRON Mainnet" : "TRON Nile Testnet";
+    els.confirmModal.classList.remove("hidden");
+  }
 
+  function closeConfirmModal() {
+    els.confirmModal.classList.add("hidden");
+  }
+
+  async function executeSend() {
+    const to = els.recipientInput.value.trim();
+    const amt = els.amountInput.value;
     let units;
-    try {
-      units = toUnits(els.amountInput.value);
-    } catch (e) {
-      toast(e.message, "warn");
-      return;
-    }
+    try { units = toUnits(amt); } catch (e) { toast(e.message, "warn"); return; }
 
-    // Confirm before sending (irreversible)
-    const human = els.amountInput.value;
-    const ok = confirm(
-      `Send ${human} ${state.symbol} to\n${to}?\n\nThis cannot be undone.`,
-    );
-    if (!ok) return;
-
-    await sendTx(
-      `Send ${human} ${state.symbol}`,
+    closeConfirmModal();
+    const txid = await sendTx(
+      `Send ${amt} ${state.symbol}`,
       state.tokenContract.transfer(to, units),
     );
+    if (txid) {
+      pushRecent(to);
+      els.amountInput.value = "";
+      updateSendButton();
+      updateSummary();
+    }
   }
 
-  async function onMax() {
-    if (!requireConnected()) return;
+  // -----------------------------------------------------------------------
+  // UI actions
+  // -----------------------------------------------------------------------
+
+  async function onPaste() {
     try {
-      const bal = await state.tokenContract.balanceOf(state.address).call();
-      els.amountInput.value = fromUnits(bal);
-    } catch (_) {}
+      const text = await navigator.clipboard.readText();
+      els.recipientInput.value = text.trim();
+      onRecipientInput();
+    } catch (_) {
+      toast("Couldn't read clipboard — paste manually", "warn");
+    }
+  }
+
+  async function onCopyAddr() {
+    if (!state.address) return;
+    try {
+      await navigator.clipboard.writeText(state.address);
+      toast("Address copied", "info");
+    } catch (_) {
+      toast("Couldn't copy — select the text manually", "warn");
+    }
+  }
+
+  function onPctChip(pct) {
+    if (!state.tronWeb || state.rawBalance === "0") return;
+    const human = fromUnits(state.rawBalance);
+    const n = Number(human);
+    if (!isFinite(n) || n <= 0) return;
+    const v = pct === 100 ? human : (n * pct / 100).toFixed(Math.min(4, state.decimals));
+    els.amountInput.value = v;
+    onAmountInput();
   }
 
   // -----------------------------------------------------------------------
@@ -298,11 +469,22 @@
   // -----------------------------------------------------------------------
 
   els.connectBtn.addEventListener("click", connect);
-  els.sendBtn.addEventListener("click", onSend);
-  els.maxBtn.addEventListener("click", onMax);
+  els.pasteBtn.addEventListener("click", onPaste);
+  els.copyAddrBtn.addEventListener("click", onCopyAddr);
+  els.recipientInput.addEventListener("input", onRecipientInput);
+  els.amountInput.addEventListener("input", onAmountInput);
+  els.sendBtn.addEventListener("click", openConfirmModal);
+  els.confirmCancelBtn.addEventListener("click", closeConfirmModal);
+  els.confirmSendBtn.addEventListener("click", executeSend);
+  els.confirmModal.addEventListener("click", (e) => {
+    if (e.target === els.confirmModal) closeConfirmModal();
+  });
+  document.querySelectorAll(".chip[data-pct]").forEach((c) => {
+    c.addEventListener("click", () => onPctChip(Number(c.dataset.pct)));
+  });
 
   // -----------------------------------------------------------------------
-  // Admin panel
+  // Admin
   // -----------------------------------------------------------------------
 
   function updateAdminCurrent() {
@@ -310,14 +492,12 @@
     els.adminCurToken.textContent = cfg.TOKEN_ADDRESS;
     els.netBadge.textContent = cfg.NETWORK;
   }
-
   function populateAdminInputs() {
     els.adminNetwork.value = cfg.NETWORK === "mainnet" ? "mainnet" : "nile";
     els.adminTokenAddr.value = cfg.TOKEN_ADDRESS;
     const isDefault = TOKEN_ABI === DEFAULT_TOKEN_ABI;
     els.adminTokenAbi.value = isDefault ? "" : JSON.stringify(TOKEN_ABI, null, 2);
   }
-
   function parseAbiOrNull(text, label) {
     const trimmed = (text || "").trim();
     if (!trimmed) return null;
@@ -332,38 +512,24 @@
   els.adminToggle.addEventListener("click", () => {
     const open = els.adminPanel.classList.toggle("hidden") === false;
     els.adminToggle.setAttribute("aria-expanded", open ? "true" : "false");
-    if (open) {
-      populateAdminInputs();
-      updateAdminCurrent();
-    }
+    if (open) { populateAdminInputs(); updateAdminCurrent(); }
   });
 
   els.adminSaveBtn.addEventListener("click", async () => {
     const token = els.adminTokenAddr.value.trim();
     const network = els.adminNetwork.value;
-
     if (!isValidTronAddr(token)) {
       toast("Token address looks invalid (must start with T, 34 chars)", "error");
       return;
     }
-
     let tokenAbi;
-    try {
-      tokenAbi = parseAbiOrNull(els.adminTokenAbi.value, "Token");
-    } catch (e) {
-      toast(e.message, "error");
-      return;
-    }
+    try { tokenAbi = parseAbiOrNull(els.adminTokenAbi.value, "Token"); }
+    catch (e) { toast(e.message, "error"); return; }
 
     const overrides = { NETWORK: network, TOKEN_ADDRESS: token };
     if (tokenAbi) overrides.TOKEN_ABI = tokenAbi;
-
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(overrides));
-    } catch (e) {
-      toast("Could not save (storage blocked)", "error");
-      return;
-    }
+    try { localStorage.setItem(LS_KEY, JSON.stringify(overrides)); }
+    catch (e) { toast("Could not save (storage blocked)", "error"); return; }
 
     cfg.NETWORK = network;
     cfg.TRONSCAN_BASE = network === "mainnet"
@@ -371,18 +537,10 @@
       : "https://nile.tronscan.org";
     cfg.TOKEN_ADDRESS = token;
     TOKEN_ABI = tokenAbi || DEFAULT_TOKEN_ABI;
-
     updateAdminCurrent();
-    toast("Saved. Reloading token…", "info");
-
+    toast("Saved", "info");
     if (state.tronWeb && state.address) {
-      try {
-        await initContracts();
-        await refresh();
-        toast("Token switched", "info");
-      } catch (e) {
-        toast("Reload failed: " + (e.message || e), "error");
-      }
+      try { await initContracts(); await refresh(); } catch (_) {}
     }
   });
 
@@ -394,13 +552,13 @@
     TOKEN_ABI = DEFAULT_TOKEN_ABI;
     populateAdminInputs();
     updateAdminCurrent();
-    toast("Reset to config.js defaults", "info");
-    if (state.tronWeb && state.address) {
-      initContracts().then(refresh).catch(() => {});
-    }
+    toast("Reset to defaults", "info");
+    if (state.tronWeb && state.address) initContracts().then(refresh).catch(() => {});
   });
 
   updateAdminCurrent();
+  renderRecents();
+  updateSendButton();
 
   // React to TronLink account/chain changes.
   window.addEventListener("message", (ev) => {
@@ -410,9 +568,7 @@
       if (window.tronWeb && window.tronWeb.ready) {
         state.tronWeb = window.tronWeb;
         state.address = state.tronWeb.defaultAddress.base58;
-        els.connectBtn.textContent = shortAddr(state.address);
-        els.statAddress.textContent = state.address;
-        initContracts().then(refresh);
+        onWalletReady();
       }
     }
   });
@@ -423,11 +579,7 @@
     if (ok && window.tronWeb && window.tronWeb.ready) {
       state.tronWeb = window.tronWeb;
       state.address = state.tronWeb.defaultAddress.base58;
-      els.connectBtn.textContent = shortAddr(state.address);
-      els.statAddress.textContent = state.address;
-      await initContracts();
-      await refresh();
-      startAutoRefresh();
+      onWalletReady();
     }
   })();
 })();

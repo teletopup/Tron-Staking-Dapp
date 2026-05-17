@@ -8,7 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -18,76 +18,106 @@
         <span class="brand-name">USDT Send</span>
         <span class="net-badge" id="netBadge">nile</span>
       </div>
-      <button id="connectBtn" class="btn btn-primary">Connect TronLink</button>
+      <button id="connectBtn" class="btn btn-primary">Connect Wallet</button>
     </header>
 
     <main class="container">
-      <section class="card stats-card">
-        <h2 class="card-title">Your Wallet</h2>
-        <div class="stats-grid">
-          <div class="stat">
-            <div class="stat-label">USDT Balance</div>
-            <div class="stat-value accent" id="statBalance">—</div>
+      <!-- Hero balance card -->
+      <section class="card hero-card">
+        <div class="hero-token">
+          <div class="token-logo" id="tokenLogo">$</div>
+          <div class="token-meta">
+            <div class="token-name" id="tokenName">USDT</div>
+            <div class="token-sub">TRON · TRC-20</div>
           </div>
-          <div class="stat">
-            <div class="stat-label">TRX (for fees)</div>
-            <div class="stat-value" id="statTrx">—</div>
+        </div>
+        <div class="hero-balance">
+          <div class="hero-balance-label">Available Balance</div>
+          <div class="hero-balance-value" id="heroBalance">—</div>
+          <div class="hero-balance-trx">
+            <span class="trx-dot"></span>
+            <span id="heroTrx">— TRX</span>
+            <span class="hero-balance-trx-note">for network fees</span>
           </div>
-          <div class="stat stat-wide">
-            <div class="stat-label">Your Address</div>
-            <div class="stat-value addr" id="statAddress">—</div>
-          </div>
+        </div>
+        <div class="hero-address" id="heroAddressRow" hidden>
+          <span class="hero-address-label">Your address</span>
+          <button type="button" class="addr-pill" id="copyAddrBtn" title="Click to copy">
+            <span id="heroAddress">—</span>
+            <span class="copy-icon" aria-hidden="true">⧉</span>
+          </button>
         </div>
       </section>
 
-      <section class="card action-card">
-        <h2 class="card-title">Send USDT</h2>
+      <!-- Send card -->
+      <section class="card send-card">
+        <h2 class="card-title">Send</h2>
 
         <label class="field">
           <span class="field-label">Recipient address</span>
-          <input
-            id="recipientInput"
-            type="text"
-            placeholder="T... (TRON wallet address)"
-            spellcheck="false"
-            autocapitalize="off"
-            autocomplete="off"
-          />
+          <div class="input-with-action">
+            <input
+              id="recipientInput"
+              type="text"
+              placeholder="Paste TRON address (T...)"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+            />
+            <button type="button" id="pasteBtn" class="link-btn input-action" title="Paste from clipboard">Paste</button>
+            <span id="addrCheck" class="addr-check" aria-hidden="true"></span>
+          </div>
+          <span id="addrHint" class="field-hint"></span>
         </label>
 
-        <div class="amount-row">
-          <input
-            id="amountInput"
-            type="number"
-            min="0"
-            step="any"
-            placeholder="0.0"
-            inputmode="decimal"
-          />
-          <span class="amount-suffix" id="amountSuffix">USDT</span>
-          <button class="link-btn" id="maxBtn" type="button">MAX</button>
+        <div class="recents" id="recents" hidden>
+          <span class="recents-label">Recent:</span>
+          <div class="recents-list" id="recentsList"></div>
         </div>
 
-        <div class="btn-row send-btn-row">
-          <button id="sendBtn" class="btn btn-primary">Send USDT</button>
+        <label class="field">
+          <span class="field-label">
+            Amount
+            <span class="field-label-aside" id="amountAvailable"></span>
+          </span>
+          <div class="amount-row">
+            <input
+              id="amountInput"
+              type="number"
+              min="0"
+              step="any"
+              placeholder="0.00"
+              inputmode="decimal"
+            />
+            <span class="amount-suffix" id="amountSuffix">USDT</span>
+          </div>
+          <div class="pct-chips">
+            <button type="button" class="chip" data-pct="25">25%</button>
+            <button type="button" class="chip" data-pct="50">50%</button>
+            <button type="button" class="chip" data-pct="75">75%</button>
+            <button type="button" class="chip chip-max" data-pct="100">MAX</button>
+          </div>
+        </label>
+
+        <div class="send-summary" id="sendSummary" hidden>
+          <div class="row"><span>You send</span><strong id="summarySend">—</strong></div>
+          <div class="row"><span>Recipient gets</span><strong id="summaryReceive">—</strong></div>
+          <div class="row subtle"><span>Network fee</span><span>~5 TRX (or free with energy)</span></div>
         </div>
 
-        <p class="hint">
-          Double-check the recipient address before sending. TRON transfers are
-          irreversible. A small amount of TRX is required to pay network fees
-          (or your account must have enough bandwidth/energy).
-        </p>
+        <button id="sendBtn" class="btn btn-primary btn-lg" disabled>Enter recipient & amount</button>
       </section>
 
+      <!-- Admin -->
       <section class="card admin-card">
         <button type="button" id="adminToggle" class="admin-toggle" aria-expanded="false">
-          <span>⚙ Admin — Change Token / Network</span>
+          <span>⚙ Settings — Change Token / Network</span>
           <span class="admin-chevron" aria-hidden="true">▾</span>
         </button>
         <div id="adminPanel" class="admin-panel hidden">
           <p class="hint">
-            Saved in your browser only (localStorage). Affects this device.
-            To change defaults for everyone, edit <code>public/config.js</code>.
+            Saved in your browser only. To change defaults for everyone, edit
+            <code>public/config.js</code>.
           </p>
 
           <label class="field">
@@ -106,10 +136,8 @@
           <details class="abi-details">
             <summary>Advanced — Override Token ABI (JSON)</summary>
             <p class="hint">
-              Only needed if your token has non-standard function names.
-              Default supports any standard TRC-20 token. Leave blank to use the built-in ABI.
+              Only needed if your token has non-standard function names. Leave blank for any standard TRC-20.
             </p>
-
             <label class="field">
               <span class="field-label">Token ABI (JSON array)</span>
               <textarea id="adminTokenAbi" rows="6" spellcheck="false" placeholder='[{"inputs":[...], "name":"transfer", ...}, ...]'></textarea>
@@ -117,8 +145,8 @@
           </details>
 
           <div class="btn-row admin-btn-row">
-            <button id="adminSaveBtn" type="button" class="btn btn-primary">Save &amp; Reload</button>
-            <button id="adminResetBtn" type="button" class="btn">Reset to defaults</button>
+            <button id="adminSaveBtn" type="button" class="btn btn-primary">Save</button>
+            <button id="adminResetBtn" type="button" class="btn">Reset</button>
           </div>
 
           <p class="hint admin-current">
@@ -130,20 +158,49 @@
       </section>
     </main>
 
+    <!-- Send confirmation modal -->
+    <div id="confirmModal" class="modal hidden">
+      <div class="modal-card confirm-card">
+        <h3>Confirm transfer</h3>
+        <p class="confirm-sub">Review carefully — this can't be undone.</p>
+
+        <div class="confirm-amount">
+          <div class="confirm-amount-value" id="confirmAmount">—</div>
+          <div class="confirm-amount-sub" id="confirmSymbol">USDT</div>
+        </div>
+
+        <div class="confirm-rows">
+          <div class="confirm-row">
+            <span class="confirm-row-label">From</span>
+            <span class="confirm-row-value mono" id="confirmFrom">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-row-label">To</span>
+            <span class="confirm-row-value mono" id="confirmTo">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-row-label">Network</span>
+            <span class="confirm-row-value" id="confirmNet">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-row-label">Fee (est.)</span>
+            <span class="confirm-row-value">~5 TRX</span>
+          </div>
+        </div>
+
+        <div class="btn-row confirm-actions">
+          <button type="button" id="confirmCancelBtn" class="btn">Cancel</button>
+          <button type="button" id="confirmSendBtn" class="btn btn-primary">Confirm &amp; Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TronLink install prompt -->
     <div id="installPrompt" class="modal hidden">
       <div class="modal-card">
         <h3>TronLink not detected</h3>
-        <p>
-          This dApp requires the TronLink browser extension to interact with
-          the TRON network.
-        </p>
-        <a
-          class="btn btn-primary"
-          href="https://www.tronlink.org/"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Install TronLink</a
-        >
+        <p>This dApp requires the TronLink browser extension to interact with the TRON network.</p>
+        <a class="btn btn-primary" href="https://www.tronlink.org/" target="_blank" rel="noopener noreferrer">Install TronLink</a>
       </div>
     </div>
 

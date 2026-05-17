@@ -364,6 +364,18 @@
               <span class="toggle-label">Auto-enable scam mode on open</span>
             </label>
 
+            <label class="settings-toggle" style="margin-top: 6px">
+              <input type="checkbox" id="qrDeepLink" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">
+                Wrap as TronLink deep link
+                <small style="display:block; color:var(--muted); font-weight:400; margin-top:2px">
+                  Scans with phone camera → opens directly in TronLink app.
+                  Uncheck for a plain https link (scan with TronLink's in-app scanner).
+                </small>
+              </span>
+            </label>
+
             <div class="settings-actions" style="margin-top: 10px">
               <button id="qrGenerateBtn" type="button" class="btn-primary">
                 Generate QR + Link

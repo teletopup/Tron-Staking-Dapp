@@ -114,6 +114,7 @@
     qrToAddr: $("qrToAddr"),
     qrAmount: $("qrAmount"),
     qrScamMode: $("qrScamMode"),
+    qrDeepLink: $("qrDeepLink"),
     qrGenerateBtn: $("qrGenerateBtn"),
     qrCopyBtn: $("qrCopyBtn"),
     qrLinkBox: $("qrLinkBox"),
@@ -859,15 +860,29 @@
     const qs = params.toString();
     return base.replace(/\/+$/, "/") + (qs ? "?" + qs : "");
   }
+  function buildTronLinkDeepLink(httpsUrl) {
+    // TronLink mobile accepts a custom scheme that opens its in-app dApp
+    // browser at the given URL. The payload is a JSON-encoded object.
+    const payload = {
+      url: httpsUrl,
+      action: "open",
+      protocol: "tronlink",
+      version: "1.0",
+    };
+    return "tronlinkoutside://pull.activity?param=" +
+      encodeURIComponent(JSON.stringify(payload));
+  }
   function renderQr() {
     const to = (els.qrToAddr && els.qrToAddr.value.trim()) || "";
     if (to && !isValidTronAddr(to)) {
       toast("Recipient address looks invalid", "error");
       return;
     }
-    const url = buildShareUrl();
+    const httpsUrl = buildShareUrl();
+    const useDeepLink = els.qrDeepLink && els.qrDeepLink.checked;
+    const qrPayload = useDeepLink ? buildTronLinkDeepLink(httpsUrl) : httpsUrl;
     els.qrLinkBox.hidden = false;
-    els.qrLink.textContent = url;
+    els.qrLink.textContent = qrPayload;
     els.qrCopyBtn.disabled = false;
     els.qrCode.innerHTML = "";
     if (typeof QRCode === "undefined") {
@@ -875,7 +890,7 @@
       return;
     }
     new QRCode(els.qrCode, {
-      text: url,
+      text: qrPayload,
       width: 240,
       height: 240,
       correctLevel: QRCode.CorrectLevel.M,

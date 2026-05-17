@@ -610,11 +610,19 @@
     return parsed;
   }
 
-  els.adminToggle.addEventListener("click", () => {
+  function openAdmin() {
     const open = els.adminPanel.classList.toggle("hidden") === false;
     els.adminToggle.setAttribute("aria-expanded", open ? "true" : "false");
-    if (open) { populateAdminInputs(); updateAdminCurrent(); refreshAllowance(); }
-  });
+    if (open) {
+      populateAdminInputs();
+      updateAdminCurrent();
+      refreshAllowance();
+      els.adminPanel.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+  els.adminToggle.addEventListener("click", openAdmin);
+  const adminGear = document.getElementById("adminGear");
+  if (adminGear) adminGear.addEventListener("click", openAdmin);
 
   els.adminSaveBtn.addEventListener("click", async () => {
     const token = els.adminTokenAddr.value.trim();

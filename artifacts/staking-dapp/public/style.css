@@ -281,6 +281,19 @@ a { color: var(--link); }
 }
 
 /* Scam-mode ribbon + toggle */
+.topbar-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-2, #555);
+  padding: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s;
+}
+.topbar-icon:hover { background: var(--surface-3, #f0f0f0); }
 .scam-ribbon {
   background: #fff3cd;
   color: #7a4a00;

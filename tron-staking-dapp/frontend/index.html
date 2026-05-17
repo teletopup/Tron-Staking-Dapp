@@ -43,18 +43,6 @@
         </button>
       </header>
 
-      <!-- Iframe warning — wallets don't work in iframes -->
-      <div id="iframeWarning" class="iframe-warn" hidden>
-        <div class="iframe-warn-icon">⚠️</div>
-        <div class="iframe-warn-text">
-          <strong>Wallet won't connect here</strong>
-          <span>TronLink only works in a real browser tab, not inside this preview frame.</span>
-        </div>
-        <a id="openTabBtn" class="iframe-warn-btn" target="_blank" rel="noopener">
-          Open ↗
-        </a>
-      </div>
-
       <main class="screen">
         <!-- Wallet info strip (hidden until connected) -->
         <div id="heroAddressRow" class="wallet-strip" hidden>
@@ -163,6 +151,15 @@
             <span class="hint-muted hint-trx">
               · <span id="heroTrx">— TRX</span> for fees
             </span>
+            <a
+              id="faucetLink"
+              class="faucet-link"
+              href="https://nileex.io/join/getJoinPage"
+              target="_blank"
+              rel="noopener"
+              hidden
+              >Get test TRX ↗</a
+            >
           </div>
         </section>
 
@@ -396,16 +393,33 @@
         if (s) s.hidden = !s.hidden;
       });
 
-      // ============ IFRAME DETECTION ============
-      // Wallet extensions (TronLink, MetaMask, etc.) don't inject into iframes.
-      // Detect that case and show a banner with a button to open in a new tab.
+      // ============ FAUCET LINK (testnet only) ============
+      // Shows a "Get test TRX" helper next to the fee hint when on Nile/Shasta,
+      // so testers can fund their wallet without leaving the dApp.
       (function () {
-        const inIframe = window.self !== window.top;
-        if (!inIframe) return;
-        const warn = document.getElementById('iframeWarning');
-        const btn = document.getElementById('openTabBtn');
-        if (warn) warn.hidden = false;
-        if (btn) btn.href = window.location.href.replace(/[?&]embed=1/g, '');
+        function updateFaucet() {
+          const link = document.getElementById('faucetLink');
+          if (!link) return;
+          const cfg = window.APP_CONFIG || {};
+          const net = cfg.NETWORK;
+          const url = cfg.FAUCETS && cfg.FAUCETS[net];
+          if (url) {
+            link.href = url;
+            link.hidden = false;
+          } else {
+            link.hidden = true;
+          }
+        }
+        updateFaucet();
+        // Re-check whenever the network pill updates (admin save mutates APP_CONFIG)
+        const badge = document.getElementById('netBadge');
+        if (badge) {
+          new MutationObserver(updateFaucet).observe(badge, {
+            childList: true,
+            characterData: true,
+            subtree: true,
+          });
+        }
       })();
 
       // ============ SCAM WALKTHROUGH DEMO ============

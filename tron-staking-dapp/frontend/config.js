@@ -7,12 +7,20 @@
 // ---------------------------------------------------------------------------
 
 window.APP_CONFIG = {
-  NETWORK: "mainnet", // "nile" | "mainnet" — defaults to mainnet so USDT balance reads work out of the box
-  TRONSCAN_BASE: "https://tronscan.org", // mainnet: https://tronscan.org · nile: https://nile.tronscan.org
-  TOKEN_ADDRESS: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", // USDT-TRC20 mainnet
+  NETWORK: "nile", // "nile" | "mainnet" — defaults to Nile testnet for safe live testing
+  TRONSCAN_BASE: "https://nile.tronscan.org",
+  // Nile testnet USDT (TetherToken). Get test TRX from https://nileex.io/join/getJoinPage
+  // then send any amount to yourself or others to test. To send TRC-20, swap the
+  // TOKEN_ADDRESS below in the settings drawer for a Nile testnet TRC-20 you hold.
+  TOKEN_ADDRESS: "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf", // Nile USDT (placeholder — swap in admin panel)
   TOKEN_SYMBOL: "USDT",
-  TOKEN_DECIMALS: 6, // USDT on TRON uses 6 decimals
+  TOKEN_DECIMALS: 6,
   REFRESH_INTERVAL_MS: 10_000,
+  // Helpful links per network
+  FAUCETS: {
+    nile: "https://nileex.io/join/getJoinPage",
+    shasta: "https://www.trongrid.io/shasta",
+  },
 };
 
 // Minimal TRC-20 ABI — only what we need to read balance and send.

@@ -402,6 +402,9 @@ body.scam-on .send-btn {
 }
 .approval-meta a { color: #1772f0; text-decoration: none; }
 .approval-meta a:hover { text-decoration: underline; }
+.approval-balance { font-weight: 600; font-size: 12px; }
+.approval-risk { font-weight: 700; font-size: 13px; }
+.approval-risk.danger-text { color: #c0392b; }
 .token-meta { flex: 1; min-width: 0; }
 .token-name { font-size: 16px; font-weight: 700; color: var(--text); }
 .token-sub {

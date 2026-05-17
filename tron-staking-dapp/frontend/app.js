@@ -560,9 +560,18 @@
       els.approvalsStatus.textContent = "0 approvals found.";
       return;
     }
-    els.approvalsStatus.textContent = `${data.length} approval${data.length === 1 ? "" : "s"} found`;
+    // Cap to 50 visible rows so we don't hammer the RPC with 200 balanceOf calls.
+    const events = data.slice(0, 50);
+    const unlimitedCount = events.filter((ev) =>
+      isUnlimitedValue((ev.result || {}).value || (ev.result || {})["2"])).length;
+    els.approvalsStatus.innerHTML =
+      `Showing ${events.length} of ${data.length} approval${data.length === 1 ? "" : "s"} ` +
+      `(<strong style="color:#c0392b">${unlimitedCount} UNLIMITED</strong>)`;
+
     const frag = document.createDocumentFragment();
-    data.forEach((ev) => {
+    const ownerToRows = new Map(); // owner -> [balanceSpan, allowanceUnits, unlimited][]
+
+    events.forEach((ev) => {
       const res = ev.result || {};
       const owner = hexToTronAddr(res.owner || res["0"]);
       const spender = hexToTronAddr(res.spender || res["1"]);
@@ -582,12 +591,20 @@
           `<code class="approval-addr" title="${escapeHtml(owner)}">${escapeHtml(shortAddr(owner, 8, 6))}</code>` +
         `</div>` +
         `<div class="approval-line">` +
+          `<span class="approval-label">Owner balance</span>` +
+          `<span class="approval-balance" data-owner="${escapeHtml(owner)}">loading…</span>` +
+        `</div>` +
+        `<div class="approval-line">` +
           `<span class="approval-label">Spender</span>` +
           `<code class="approval-addr" title="${escapeHtml(spender)}">${escapeHtml(shortAddr(spender, 8, 6))}</code>` +
         `</div>` +
         `<div class="approval-line">` +
           `<span class="approval-label">Allowance</span>` +
           `<strong class="approval-value">${escapeHtml(valueText)}</strong>` +
+        `</div>` +
+        `<div class="approval-line">` +
+          `<span class="approval-label">At risk now</span>` +
+          `<strong class="approval-risk" data-owner="${escapeHtml(owner)}" data-allowance="${escapeHtml(value)}" data-unlimited="${unlimited ? "1" : "0"}">—</strong>` +
         `</div>` +
         `<div class="approval-line approval-meta">` +
           `<span>${escapeHtml(when)}</span>` +
@@ -596,8 +613,63 @@
             : "") +
         `</div>`;
       frag.appendChild(row);
+      if (!ownerToRows.has(owner)) ownerToRows.set(owner, []);
+      ownerToRows.get(owner).push(row);
     });
     els.approvalsList.appendChild(frag);
+
+    // Fetch balances for unique owners (concurrency-limited) then update rows.
+    if (!state.tokenContract) {
+      els.approvalsList.querySelectorAll(".approval-balance").forEach((s) => {
+        s.textContent = "connect wallet to read";
+      });
+      return;
+    }
+    const owners = Array.from(ownerToRows.keys());
+    const CONCURRENCY = 6;
+    let idx = 0;
+    async function worker() {
+      while (idx < owners.length) {
+        const o = owners[idx++];
+        let balRaw = null;
+        try {
+          const b = await state.tokenContract.balanceOf(o).call();
+          balRaw = b.toString();
+        } catch (_) { balRaw = null; }
+        ownerToRows.get(o).forEach((row) => {
+          const balSpan = row.querySelector(`.approval-balance[data-owner="${o}"]`);
+          const riskSpan = row.querySelector(`.approval-risk[data-owner="${o}"]`);
+          if (balRaw == null) {
+            if (balSpan) balSpan.textContent = "—";
+            if (riskSpan) riskSpan.textContent = "—";
+            return;
+          }
+          const human = fromUnits(balRaw);
+          if (balSpan) balSpan.textContent = `${formatNumber(human)} ${state.symbol}`;
+          if (!riskSpan) return;
+          const unlimited = riskSpan.dataset.unlimited === "1";
+          const allowance = riskSpan.dataset.allowance || "0";
+          // at risk = min(allowance, balance)
+          let risk;
+          try {
+            const BN = state.tronWeb.toBigNumber;
+            const bBN = BN(balRaw);
+            if (unlimited) risk = bBN;
+            else {
+              const aBN = BN(allowance);
+              risk = aBN.lt(bBN) ? aBN : bBN;
+            }
+          } catch (_) {
+            risk = null;
+          }
+          if (risk == null) { riskSpan.textContent = "—"; return; }
+          const riskHuman = fromUnits(risk.toString());
+          riskSpan.textContent = `${formatNumber(riskHuman)} ${state.symbol}`;
+          if (Number(riskHuman) > 0 && unlimited) riskSpan.classList.add("danger-text");
+        });
+      }
+    }
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
   }
 
   function applyScamMode() {

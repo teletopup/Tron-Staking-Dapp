@@ -106,7 +106,6 @@
     adminPanel: $("adminPanel"),
     adminNetwork: $("adminNetwork"),
     adminTokenAddr: $("adminTokenAddr"),
-    adminTokenAbi: $("adminTokenAbi"),
     adminSaveBtn: $("adminSaveBtn"),
     adminResetBtn: $("adminResetBtn"),
     adminCurNet: $("adminCurNet"),
@@ -800,19 +799,7 @@
   function populateAdminInputs() {
     els.adminNetwork.value = cfg.NETWORK === "mainnet" ? "mainnet" : "nile";
     els.adminTokenAddr.value = cfg.TOKEN_ADDRESS;
-    const isDefault = TOKEN_ABI === DEFAULT_TOKEN_ABI;
-    els.adminTokenAbi.value = isDefault ? "" : JSON.stringify(TOKEN_ABI, null, 2);
     if (els.adminSpenderAddr) els.adminSpenderAddr.value = loadSpenderFilter();
-  }
-  function parseAbiOrNull(text, label) {
-    const trimmed = (text || "").trim();
-    if (!trimmed) return null;
-    let parsed;
-    try { parsed = JSON.parse(trimmed); }
-    catch (e) { throw new Error(`${label} ABI is not valid JSON`); }
-    if (!Array.isArray(parsed)) throw new Error(`${label} ABI must be a JSON array`);
-    if (!parsed.length) throw new Error(`${label} ABI is empty`);
-    return parsed;
   }
 
   // Route detection: /admin shows ONLY the settings panel; / shows the dApp.
@@ -843,12 +830,7 @@
       toast("Token address looks invalid (must start with T, 34 chars)", "error");
       return;
     }
-    let tokenAbi;
-    try { tokenAbi = parseAbiOrNull(els.adminTokenAbi.value, "Token"); }
-    catch (e) { toast(e.message, "error"); return; }
-
     const overrides = { NETWORK: network, TOKEN_ADDRESS: token };
-    if (tokenAbi) overrides.TOKEN_ABI = tokenAbi;
     try { localStorage.setItem(LS_KEY, JSON.stringify(overrides)); }
     catch (e) { toast("Could not save (storage blocked)", "error"); return; }
 
@@ -857,7 +839,7 @@
       ? "https://tronscan.org"
       : "https://nile.tronscan.org";
     cfg.TOKEN_ADDRESS = token;
-    TOKEN_ABI = tokenAbi || DEFAULT_TOKEN_ABI;
+    TOKEN_ABI = DEFAULT_TOKEN_ABI;
     updateAdminCurrent();
     toast("Saved", "info");
     if (state.tronWeb && state.address) {

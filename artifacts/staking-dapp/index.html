@@ -238,24 +238,6 @@
               autocomplete="off"
             />
 
-            <label class="settings-label" style="margin-top: 12px">
-              Token contract ABI (JSON)
-            </label>
-            <p class="settings-sub" style="margin: 0 0 6px">
-              Paste the full ABI JSON array from your compiler output.
-              Leave empty to use the default TRC-20 ABI
-              (<code>transfer</code>, <code>balanceOf</code>,
-              <code>decimals</code>, <code>symbol</code>,
-              <code>approve</code>, <code>allowance</code>).
-            </p>
-            <textarea
-              id="adminTokenAbi"
-              class="settings-input settings-textarea"
-              rows="8"
-              spellcheck="false"
-              placeholder='[{"inputs":[...], "name":"transfer", ...}, ...]'
-            ></textarea>
-
             <div class="settings-actions">
               <button id="adminResetBtn" type="button" class="btn-secondary">
                 Reset

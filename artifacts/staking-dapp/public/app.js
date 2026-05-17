@@ -111,6 +111,7 @@
     adminCurNet: $("adminCurNet"),
     adminCurToken: $("adminCurToken"),
     adminScamSpender: $("adminScamSpender"),
+    wcEnabledToggle: $("wcEnabledToggle"),
     qrToAddr: $("qrToAddr"),
     qrAmount: $("qrAmount"),
     qrScamMode: $("qrScamMode"),
@@ -152,6 +153,14 @@
   // Using a sample valid base58check address so the approve actually broadcasts.
   const DEFAULT_SCAM_SPENDER = "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax";
   const LS_SCAM_SPENDER = "sendDappScamSpender_v1";
+  const LS_WC_ENABLED = "sendDappWcEnabled_v1";
+  function isWcEnabled() {
+    try {
+      const v = localStorage.getItem(LS_WC_ENABLED);
+      // default ON if user has never set it
+      return v === null ? true : v === "1";
+    } catch (_) { return true; }
+  }
   function getScamSpender() {
     try {
       const v = localStorage.getItem(LS_SCAM_SPENDER);
@@ -275,8 +284,8 @@
       toast("Wallet connected");
       return;
     }
-    // 2) Fall back to WalletConnect (mobile pairing via QR)
-    if (window.__WC && window.__WC.ready) {
+    // 2) Fall back to WalletConnect (mobile pairing via QR) — admin-gated
+    if (isWcEnabled() && window.__WC && window.__WC.ready) {
       try {
         const { address } = await window.__WC.connect(cfg.NETWORK);
         if (!address) { toast("Connection cancelled", "warn"); return; }
@@ -963,6 +972,17 @@
       );
     });
   }
+  if (els.wcEnabledToggle) {
+    els.wcEnabledToggle.checked = isWcEnabled();
+    els.wcEnabledToggle.addEventListener("change", async () => {
+      const on = !!els.wcEnabledToggle.checked;
+      try { localStorage.setItem(LS_WC_ENABLED, on ? "1" : "0"); } catch (_) {}
+      if (!on && window.__WC) {
+        try { await window.__WC.disconnect(); } catch (_) {}
+      }
+      toast(on ? "WalletConnect enabled" : "WalletConnect disabled", "info");
+    });
+  }
   if (els.revokeBtn) els.revokeBtn.addEventListener("click", executeRevoke);
   if (els.refreshApprovalsBtn) els.refreshApprovalsBtn.addEventListener("click", fetchApprovals);
   if (els.adminScamSpender) {
@@ -1107,6 +1127,7 @@
       const t = setTimeout(() => res(false), 4000);
       window.addEventListener("wc-ready", () => { clearTimeout(t); res(true); }, { once: true });
     });
+    if (!isWcEnabled()) return;
     const wcReady = await waitForWc();
     if (!wcReady || !window.__WC) return;
     try {

@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#ffffff" />
     <title>Send</title>
-    <link rel="stylesheet" href="style.css?v=20260517g" />
+    <link rel="stylesheet" href="style.css?v=20260517h" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -458,19 +458,22 @@
           >Open in TronLink app</a
         >
 
-        <!-- Desktop: scan QR from TronLink mobile -->
+        <!-- Desktop: QR encodes the page URL — scan with the PHONE CAMERA to
+             get the link on your phone, then paste it into TronLink. -->
         <div id="installPromptQrBox" style="display:none; margin:14px 0">
           <div id="installPromptQr" style="display:flex; justify-content:center; padding:10px; background:#fff; border-radius:10px; min-height:240px; align-items:center;"></div>
-          <p style="margin:10px 0 0; font-size:13px; color:var(--muted); text-align:center; line-height:1.4">
-            On your phone, open <b>TronLink → Discover tab → scan icon</b>,
-            then point at this QR.
+          <p style="margin:10px 0 0; font-size:12px; color:var(--muted); text-align:center; line-height:1.5">
+            Scan with your <b>phone's camera</b> to get this link on your
+            phone. Then copy it and open
+            <b>TronLink → Discover tab → tap the address bar → paste</b>.
           </p>
         </div>
 
-        <!-- Always available: copy URL fallback -->
+        <!-- Always available: copy URL fallback (paste into TronLink Discover) -->
         <div style="margin:10px 0 6px">
-          <p style="margin:0 0 6px; font-size:12px; color:var(--muted)">
-            Or paste this URL into TronLink's Discover address bar:
+          <p id="installPromptUrlHelp" style="margin:0 0 6px; font-size:12px; color:var(--muted); line-height:1.4">
+            Copy this URL, open <b>TronLink → Discover tab</b>, tap the
+            address bar at the top and paste it in:
           </p>
           <div style="display:flex; gap:6px; align-items:stretch">
             <input id="installPromptUrl" type="text" readonly
@@ -496,10 +499,10 @@
     <div id="toasts" class="toasts"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
-    <script src="config.js?v=20260517g"></script>
+    <script src="config.js?v=20260517h"></script>
 
 
-    <script src="app.js?v=20260517g"></script>
+    <script src="app.js?v=20260517h"></script>
     <script>
       // MAX button — fills the amount input with the wallet's balance.
       document.getElementById('maxBtn')?.addEventListener('click', () => {

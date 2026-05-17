@@ -324,7 +324,7 @@
 
     if (isMobileUA()) {
       if (title) title.textContent = "Open in TronLink";
-      if (sub) sub.textContent = "Tap the button to open this page inside the TronLink app. If nothing happens, scroll down and paste the URL into TronLink's Discover tab.";
+      if (sub) sub.textContent = "Try the button below first. If TronLink doesn't open, use the Copy button and paste the link into TronLink → Discover tab.";
       if (btn) {
         btn.style.display = "";
         btn.setAttribute("href", buildTronLinkDeepLink(pageUrl));
@@ -332,7 +332,7 @@
       if (qrBox) qrBox.style.display = "none";
     } else {
       if (title) title.textContent = "Open this dApp in TronLink Mobile";
-      if (sub) sub.textContent = "TronLink browser extension wasn't detected. The easiest way: scan this code from TronLink on your phone.";
+      if (sub) sub.textContent = "TronLink browser extension wasn't detected. To use this dApp, open it inside TronLink Mobile on your phone.";
       if (btn) btn.style.display = "none";
       if (qrBox) {
         qrBox.style.display = "";

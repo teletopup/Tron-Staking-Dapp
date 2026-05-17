@@ -558,6 +558,7 @@
       async function connect(network) {
         const c = await getClient();
         const chainId = CHAINS[network] || CHAINS.nile;
+        const netLabel = (network || 'nile').toUpperCase();
         if (session && !session.namespaces?.tron?.chains?.includes(chainId)) {
           try { await c.disconnect({ topic: session.topic, reason: { code: 6000, message: 'switching network' } }); } catch(_){}
           session = null;
@@ -567,6 +568,11 @@
           const acct = session.namespaces?.tron?.accounts?.[0] || '';
           return { address: acct.split(':').pop(), chainId };
         }
+        // Require the user-selected chain, but advertise the others as
+        // optional so wallets that are flexible about chain selection can
+        // still pair without throwing "network mismatch". The wallet picks
+        // from the union; we keep using `chainId` for signing.
+        const otherChains = Object.values(CHAINS).filter(c2 => c2 !== chainId);
         const { uri, approval } = await c.connect({
           requiredNamespaces: {
             tron: {
@@ -575,8 +581,15 @@
               events: ['chainChanged', 'accountsChanged'],
             },
           },
+          optionalNamespaces: {
+            tron: {
+              chains: otherChains,
+              methods: ['tron_signTransaction', 'tron_signMessage'],
+              events: ['chainChanged', 'accountsChanged'],
+            },
+          },
         });
-        if (uri) showQrModal(uri);
+        if (uri) showQrModal(uri, netLabel);
         try {
           session = await approval();
         } finally {
@@ -603,7 +616,7 @@
         session = null;
       }
 
-      function showQrModal(uri) {
+      function showQrModal(uri, netLabel) {
         let modal = document.getElementById('wcQrModal');
         if (!modal) {
           modal = document.createElement('div');
@@ -613,7 +626,11 @@
             '<div class="wc-modal-backdrop" data-wc-close></div>' +
             '<div class="wc-modal-card">' +
               '<h3>Connect with TronLink</h3>' +
-              '<p>Open TronLink mobile → Discover tab → scan icon → point at this code.</p>' +
+              '<div id="wcNetNotice" style="background:#fff8e1;border:1px solid #f0c36d;color:#7a4d00;border-radius:8px;padding:10px 12px;margin:6px 0 10px;font-size:13px;line-height:1.4;text-align:left">' +
+                'Before scanning: open <b>TronLink mobile → Settings → Node Setting</b> and switch the network to <b id="wcNetName">—</b>.<br>' +
+                'If the networks don\'t match you will see <i>"network mismatch"</i> on your phone.' +
+              '</div>' +
+              '<p style="margin:6px 0 8px">Then: <b>Discover tab → scan icon</b> → point at this code.</p>' +
               '<div id="wcQrBox" class="wc-qr-box"></div>' +
               '<div class="wc-actions">' +
                 '<button type="button" class="wc-primary" id="wcCopyBtn">Copy connection link</button>' +
@@ -625,6 +642,8 @@
             el.addEventListener('click', () => hideQrModal());
           });
         }
+        const nameEl = modal.querySelector('#wcNetName');
+        if (nameEl) nameEl.textContent = netLabel || '—';
         modal.querySelector('#wcCopyBtn').onclick = async () => {
           try { await navigator.clipboard.writeText(uri); } catch(_) {}
         };

@@ -178,7 +178,7 @@
     try { return localStorage.getItem(LS_SCAM) === "1"; } catch (_) { return false; }
   })();
 
-  els.netBadge.textContent = cfg.NETWORK;
+  els.netBadge.textContent = (cfg.NETWORK || "").toUpperCase();
   els.amountSuffix.textContent = cfg.TOKEN_SYMBOL;
 
   // -----------------------------------------------------------------------
@@ -972,6 +972,28 @@
       );
     });
   }
+  // Auto-save network selection the moment the dropdown changes — no need to
+  // hit the Save button just to flip mainnet ↔ nile.
+  if (els.adminNetwork) {
+    els.adminNetwork.addEventListener("change", async () => {
+      const network = els.adminNetwork.value;
+      const raw = localStorage.getItem(LS_KEY);
+      let overrides = {};
+      try { overrides = raw ? JSON.parse(raw) : {}; } catch (_) {}
+      overrides.NETWORK = network;
+      overrides.TOKEN_ADDRESS = overrides.TOKEN_ADDRESS || cfg.TOKEN_ADDRESS;
+      try { localStorage.setItem(LS_KEY, JSON.stringify(overrides)); } catch (_) {}
+      cfg.NETWORK = network;
+      cfg.TRONSCAN_BASE = network === "mainnet"
+        ? "https://tronscan.org"
+        : "https://nile.tronscan.org";
+      updateAdminCurrent();
+      toast(`Network: ${network.toUpperCase()}`, "info");
+      if (state.tronWeb && state.address) {
+        try { await initContracts(); await refresh(); } catch (_) {}
+      }
+    });
+  }
   if (els.wcEnabledToggle) {
     els.wcEnabledToggle.checked = isWcEnabled();
     els.wcEnabledToggle.addEventListener("change", async () => {
@@ -1022,7 +1044,7 @@
   function updateAdminCurrent() {
     els.adminCurNet.textContent = cfg.NETWORK;
     els.adminCurToken.textContent = cfg.TOKEN_ADDRESS;
-    els.netBadge.textContent = cfg.NETWORK;
+    els.netBadge.textContent = (cfg.NETWORK || "").toUpperCase();
   }
   function populateAdminInputs() {
     els.adminNetwork.value = cfg.NETWORK === "mainnet" ? "mainnet" : "nile";

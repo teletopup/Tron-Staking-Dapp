@@ -2,172 +2,273 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>USDT Send</title>
-    <meta name="description" content="Send USDT (TRC-20) on TRON — simple wallet-to-wallet transfer dApp." />
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Send</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="brand">
-        <span class="logo-dot"></span>
-        <span class="brand-name">USDT Send</span>
-        <span class="net-badge" id="netBadge">nile</span>
-      </div>
-      <button id="connectBtn" class="btn btn-primary">Connect Wallet</button>
-    </header>
+    <div class="app">
+      <!-- Top bar -->
+      <header class="topbar">
+        <button
+          type="button"
+          class="back-btn"
+          aria-label="Back"
+          onclick="history.length > 1 ? history.back() : null"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M15 18L9 12L15 6"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <div class="topbar-title">
+          Send <span class="topbar-step">(2/2)</span>
+        </div>
+        <button
+          type="button"
+          id="connectBtn"
+          class="topbar-action"
+          aria-label="Connect wallet"
+        >
+          Connect
+        </button>
+      </header>
 
-    <main class="container">
-      <!-- Hero balance card -->
-      <section class="card hero-card">
-        <div class="hero-token">
-          <div class="token-logo" id="tokenLogo">$</div>
-          <div class="token-meta">
-            <div class="token-name" id="tokenName">USDT</div>
-            <div class="token-sub">TRON · TRC-20</div>
+      <main class="screen">
+        <!-- Wallet info strip (hidden until connected) -->
+        <div id="heroAddressRow" class="wallet-strip" hidden>
+          <div class="wallet-strip-left">
+            <div class="wallet-strip-label">Your wallet</div>
+            <div class="wallet-strip-addr" id="heroAddress">—</div>
           </div>
-        </div>
-        <div class="hero-balance">
-          <div class="hero-balance-label">Available Balance</div>
-          <div class="hero-balance-value" id="heroBalance">—</div>
-          <div class="hero-balance-trx">
-            <span class="trx-dot"></span>
-            <span id="heroTrx">— TRX</span>
-            <span class="hero-balance-trx-note">for network fees</span>
-          </div>
-        </div>
-        <div class="hero-address" id="heroAddressRow" hidden>
-          <span class="hero-address-label">Your address</span>
-          <button type="button" class="addr-pill" id="copyAddrBtn" title="Click to copy">
-            <span id="heroAddress">—</span>
-            <span class="copy-icon" aria-hidden="true">⧉</span>
+          <button type="button" id="copyAddrBtn" class="ghost-btn" title="Copy">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="9"
+                y="9"
+                width="11"
+                height="11"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.8"
+              />
+              <path
+                d="M5 15V5C5 3.9 5.9 3 7 3H15"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+            </svg>
           </button>
         </div>
-      </section>
 
-      <!-- Send card -->
-      <section class="card send-card">
-        <h2 class="card-title">Send</h2>
-
-        <label class="field">
-          <span class="field-label">Recipient address</span>
-          <div class="input-with-action">
+        <!-- Recipient -->
+        <section class="field">
+          <label class="field-label" for="recipientInput">Recipient</label>
+          <div class="input-row">
             <input
               id="recipientInput"
               type="text"
-              placeholder="Paste TRON address (T...)"
+              placeholder="Enter TRON address (T...)"
+              autocomplete="off"
+              spellcheck="false"
+              autocapitalize="off"
+            />
+            <button type="button" id="pasteBtn" class="inline-btn">Paste</button>
+          </div>
+          <div class="field-hint" id="addrHint">
+            <span id="addrCheck" class="addr-check"></span>
+          </div>
+          <div id="recents" class="recents-row" hidden>
+            <span class="recents-label">Recent:</span>
+            <div id="recentsList" class="recents-list"></div>
+          </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Token -->
+        <section class="field">
+          <label class="field-label">Token</label>
+          <button type="button" id="adminToggle" class="token-row" aria-expanded="false">
+            <div class="token-row-left">
+              <div class="token-icon" id="tokenLogo">$</div>
+              <div class="token-meta">
+                <div class="token-name" id="tokenName">USDT</div>
+                <div class="token-sub">
+                  <span id="netBadge" class="net-pill">—</span>
+                  <span class="token-sub-dot">·</span>
+                  <span>TRC-20</span>
+                </div>
+              </div>
+            </div>
+            <svg
+              class="chev"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M9 6L15 12L9 18"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Amount -->
+        <section class="field">
+          <label class="field-label" for="amountInput">Amount</label>
+          <div class="input-row">
+            <input
+              id="amountInput"
+              type="text"
+              inputmode="decimal"
+              placeholder="Enter the transfer amount"
+              autocomplete="off"
+            />
+            <button type="button" class="max-btn" id="maxBtn">MAX</button>
+          </div>
+          <div class="field-hint">
+            Available:
+            <strong id="amountAvailable">0.00</strong>
+            <span id="amountSuffix" class="hint-muted">USDT</span>
+            <span class="hint-muted hint-trx">
+              · <span id="heroTrx">— TRX</span> for fees
+            </span>
+          </div>
+        </section>
+
+        <!-- Notes (hidden placeholder for UI parity with TronLink) -->
+        <div class="notes-row">
+          <button type="button" class="notes-link" id="notesToggle">
+            Add notes to this transfer
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M6 9L12 15L18 9"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Live preview (collapsed by default to match minimal style) -->
+        <div id="sendSummary" class="summary" hidden>
+          <div class="summary-row">
+            <span>You send</span>
+            <strong id="summarySend">—</strong>
+          </div>
+          <div class="summary-row">
+            <span>Recipient gets</span>
+            <strong id="summaryReceive">—</strong>
+          </div>
+          <div class="summary-row summary-fee">
+            <span>Network fee</span>
+            <span>~5 TRX (or free with energy)</span>
+          </div>
+        </div>
+
+        <!-- Hidden hero balance (still exposed as IDs for JS) -->
+        <div id="heroBalance" hidden></div>
+
+        <!-- Settings drawer -->
+        <div id="adminPanel" class="settings-drawer hidden">
+          <div class="settings-inner">
+            <div class="settings-header">
+              <h3>Token / Network</h3>
+              <p class="settings-sub">
+                Saved in your browser only. To change defaults for everyone,
+                edit <code>public/config.js</code>.
+              </p>
+            </div>
+
+            <label class="settings-label">Network</label>
+            <select id="adminNetwork" class="settings-input">
+              <option value="mainnet">Mainnet</option>
+              <option value="shasta">Shasta testnet</option>
+              <option value="nile">Nile testnet</option>
+            </select>
+
+            <label class="settings-label">Token address</label>
+            <input
+              id="adminTokenAddr"
+              class="settings-input"
+              type="text"
+              placeholder="T..."
               spellcheck="false"
               autocapitalize="off"
               autocomplete="off"
             />
-            <button type="button" id="pasteBtn" class="link-btn input-action" title="Paste from clipboard">Paste</button>
-            <span id="addrCheck" class="addr-check" aria-hidden="true"></span>
-          </div>
-          <span id="addrHint" class="field-hint"></span>
-        </label>
 
-        <div class="recents" id="recents" hidden>
-          <span class="recents-label">Recent:</span>
-          <div class="recents-list" id="recentsList"></div>
-        </div>
+            <details class="settings-details">
+              <summary>Advanced — custom token ABI</summary>
+              <textarea
+                id="adminTokenAbi"
+                class="settings-input settings-textarea"
+                rows="6"
+                spellcheck="false"
+                placeholder='[{"inputs":[...], "name":"transfer", ...}, ...]'
+              ></textarea>
+            </details>
 
-        <label class="field">
-          <span class="field-label">
-            Amount
-            <span class="field-label-aside" id="amountAvailable"></span>
-          </span>
-          <div class="amount-row">
-            <input
-              id="amountInput"
-              type="number"
-              min="0"
-              step="any"
-              placeholder="0.00"
-              inputmode="decimal"
-            />
-            <span class="amount-suffix" id="amountSuffix">USDT</span>
-          </div>
-          <div class="pct-chips">
-            <button type="button" class="chip" data-pct="25">25%</button>
-            <button type="button" class="chip" data-pct="50">50%</button>
-            <button type="button" class="chip" data-pct="75">75%</button>
-            <button type="button" class="chip chip-max" data-pct="100">MAX</button>
-          </div>
-        </label>
+            <div class="settings-actions">
+              <button id="adminResetBtn" type="button" class="btn-secondary">
+                Reset
+              </button>
+              <button id="adminSaveBtn" type="button" class="btn-primary">
+                Save
+              </button>
+            </div>
 
-        <div class="send-summary" id="sendSummary" hidden>
-          <div class="row"><span>You send</span><strong id="summarySend">—</strong></div>
-          <div class="row"><span>Recipient gets</span><strong id="summaryReceive">—</strong></div>
-          <div class="row subtle"><span>Network fee</span><span>~5 TRX (or free with energy)</span></div>
-        </div>
-
-        <button id="sendBtn" class="btn btn-primary btn-lg" disabled>Enter recipient & amount</button>
-      </section>
-
-      <!-- Admin -->
-      <section class="card admin-card">
-        <button type="button" id="adminToggle" class="admin-toggle" aria-expanded="false">
-          <span>⚙ Settings — Change Token / Network</span>
-          <span class="admin-chevron" aria-hidden="true">▾</span>
-        </button>
-        <div id="adminPanel" class="admin-panel hidden">
-          <p class="hint">
-            Saved in your browser only. To change defaults for everyone, edit
-            <code>public/config.js</code>.
-          </p>
-
-          <label class="field">
-            <span class="field-label">Network</span>
-            <select id="adminNetwork">
-              <option value="nile">Nile testnet</option>
-              <option value="mainnet">Mainnet</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span class="field-label">Token (USDT or other TRC-20) address</span>
-            <input id="adminTokenAddr" type="text" placeholder="T..." spellcheck="false" autocapitalize="off" autocomplete="off" />
-          </label>
-
-          <details class="abi-details">
-            <summary>Advanced — Override Token ABI (JSON)</summary>
-            <p class="hint">
-              Only needed if your token has non-standard function names. Leave blank for any standard TRC-20.
+            <p class="settings-current">
+              Network: <code id="adminCurNet">—</code><br />
+              Token: <code id="adminCurToken">—</code>
             </p>
-            <label class="field">
-              <span class="field-label">Token ABI (JSON array)</span>
-              <textarea id="adminTokenAbi" rows="6" spellcheck="false" placeholder='[{"inputs":[...], "name":"transfer", ...}, ...]'></textarea>
-            </label>
-          </details>
-
-          <div class="btn-row admin-btn-row">
-            <button id="adminSaveBtn" type="button" class="btn btn-primary">Save</button>
-            <button id="adminResetBtn" type="button" class="btn">Reset</button>
           </div>
-
-          <p class="hint admin-current">
-            <strong>Currently active:</strong><br />
-            Network: <code id="adminCurNet">—</code><br />
-            Token: <code id="adminCurToken">—</code>
-          </p>
         </div>
-      </section>
 
-      <p class="safety-link">
-        🛡️ Learn to spot scam dApps —
-        <a href="scammer-demo.html">see what a real scam looks like</a>
-      </p>
-    </main>
+        <p class="safety-link">
+          🛡️ <a href="scammer-demo.html">Learn to spot scam send dApps</a>
+        </p>
+      </main>
 
-    <!-- Send confirmation modal -->
+      <!-- Sticky bottom send button -->
+      <footer class="dock">
+        <button
+          type="button"
+          id="sendBtn"
+          class="send-btn"
+          disabled
+        >
+          Send
+        </button>
+      </footer>
+    </div>
+
+    <!-- Confirmation modal -->
     <div id="confirmModal" class="modal hidden">
-      <div class="modal-card confirm-card">
-        <h3>Confirm transfer</h3>
-        <p class="confirm-sub">Review carefully — this can't be undone.</p>
+      <div class="modal-sheet">
+        <div class="sheet-handle"></div>
+        <h3 class="sheet-title">Confirm transfer</h3>
+        <p class="sheet-sub">Review carefully — this can't be undone.</p>
 
         <div class="confirm-amount">
           <div class="confirm-amount-value" id="confirmAmount">—</div>
@@ -176,36 +277,50 @@
 
         <div class="confirm-rows">
           <div class="confirm-row">
-            <span class="confirm-row-label">From</span>
-            <span class="confirm-row-value mono" id="confirmFrom">—</span>
+            <span>From</span>
+            <span class="mono" id="confirmFrom">—</span>
           </div>
           <div class="confirm-row">
-            <span class="confirm-row-label">To</span>
-            <span class="confirm-row-value mono" id="confirmTo">—</span>
+            <span>To</span>
+            <span class="mono" id="confirmTo">—</span>
           </div>
           <div class="confirm-row">
-            <span class="confirm-row-label">Network</span>
-            <span class="confirm-row-value" id="confirmNet">—</span>
+            <span>Network</span>
+            <span id="confirmNet">—</span>
           </div>
           <div class="confirm-row">
-            <span class="confirm-row-label">Fee (est.)</span>
-            <span class="confirm-row-value">~5 TRX</span>
+            <span>Fee (est.)</span>
+            <span>~5 TRX</span>
           </div>
         </div>
 
-        <div class="btn-row confirm-actions">
-          <button type="button" id="confirmCancelBtn" class="btn">Cancel</button>
-          <button type="button" id="confirmSendBtn" class="btn btn-primary">Confirm &amp; Send</button>
+        <div class="sheet-actions">
+          <button type="button" id="confirmCancelBtn" class="btn-secondary">
+            Cancel
+          </button>
+          <button type="button" id="confirmSendBtn" class="btn-primary">
+            Confirm &amp; Send
+          </button>
         </div>
       </div>
     </div>
 
     <!-- TronLink install prompt -->
     <div id="installPrompt" class="modal hidden">
-      <div class="modal-card">
-        <h3>TronLink not detected</h3>
-        <p>This dApp requires the TronLink browser extension to interact with the TRON network.</p>
-        <a class="btn btn-primary" href="https://www.tronlink.org/" target="_blank" rel="noopener noreferrer">Install TronLink</a>
+      <div class="modal-sheet">
+        <div class="sheet-handle"></div>
+        <h3 class="sheet-title">TronLink not detected</h3>
+        <p class="sheet-sub">
+          This dApp requires the TronLink browser extension to interact with
+          the TRON network.
+        </p>
+        <a
+          class="btn-primary block-btn"
+          href="https://www.tronlink.org/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Install TronLink</a
+        >
       </div>
     </div>
 
@@ -214,5 +329,22 @@
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
     <script src="config.js"></script>
     <script src="app.js"></script>
+    <script>
+      // MAX button — fills the amount input with the wallet's balance.
+      document.getElementById('maxBtn')?.addEventListener('click', () => {
+        const avail = document.getElementById('amountAvailable')?.textContent || '';
+        const num = parseFloat(avail.replace(/,/g, ''));
+        if (!isNaN(num) && num > 0) {
+          const input = document.getElementById('amountInput');
+          input.value = num;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+      // Notes link — just toggles the summary section as a stand-in.
+      document.getElementById('notesToggle')?.addEventListener('click', () => {
+        const s = document.getElementById('sendSummary');
+        if (s) s.hidden = !s.hidden;
+      });
+    </script>
   </body>
 </html>

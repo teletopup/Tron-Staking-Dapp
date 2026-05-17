@@ -641,6 +641,14 @@
         }
 
         openBtn?.addEventListener('click', open);
+
+        // ?demo=N auto-opens to step N (1-based) for previewing
+        const demoParam = new URLSearchParams(location.search).get('demo');
+        if (demoParam !== null) {
+          const stepIdx = Math.max(0, Math.min(steps.length - 1, parseInt(demoParam, 10) - 1 || 0));
+          setTimeout(() => { open(); cur = stepIdx; render(); }, 100);
+        }
+
         closeBtn?.addEventListener('click', close);
         sheet?.addEventListener('click', (e) => {
           if (e.target === sheet) close();

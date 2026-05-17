@@ -245,9 +245,16 @@
           </div>
         </div>
 
-        <p class="safety-link">
-          🛡️ <a href="scammer-demo.html">Learn to spot scam send dApps</a>
-        </p>
+        <button type="button" id="demoOpenBtn" class="demo-cta">
+          <span class="demo-cta-icon">🛡️</span>
+          <span class="demo-cta-text">
+            <strong>See how scammers steal USDT</strong>
+            <span class="demo-cta-sub">Walk through a fake "send" dApp — no real wallet needed</span>
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </main>
 
       <!-- Sticky bottom send button -->
@@ -305,6 +312,37 @@
       </div>
     </div>
 
+    <!-- Scam walkthrough demo sheet -->
+    <div id="demoSheet" class="modal hidden">
+      <div class="modal-sheet demo-sheet">
+        <div class="sheet-handle"></div>
+
+        <div class="demo-header">
+          <button type="button" id="demoCloseBtn" class="ghost-btn" aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div class="demo-title-wrap">
+            <div class="demo-title" id="demoTitle">Scam dApp Walkthrough</div>
+            <div class="demo-progress" id="demoProgress">Step 1 of 7</div>
+          </div>
+          <div style="width:32px"></div>
+        </div>
+
+        <div class="demo-bar"><div class="demo-bar-fill" id="demoBarFill"></div></div>
+
+        <div class="demo-body" id="demoBody">
+          <!-- Step content rendered by JS -->
+        </div>
+
+        <div class="demo-footer">
+          <button type="button" id="demoPrevBtn" class="btn-secondary" disabled>← Back</button>
+          <button type="button" id="demoNextBtn" class="btn-primary">Start →</button>
+        </div>
+      </div>
+    </div>
+
     <!-- TronLink install prompt -->
     <div id="installPrompt" class="modal hidden">
       <div class="modal-sheet">
@@ -345,6 +383,276 @@
         const s = document.getElementById('sendSummary');
         if (s) s.hidden = !s.hidden;
       });
+
+      // ============ SCAM WALKTHROUGH DEMO ============
+      (function () {
+        const sheet = document.getElementById('demoSheet');
+        const body = document.getElementById('demoBody');
+        const title = document.getElementById('demoTitle');
+        const progress = document.getElementById('demoProgress');
+        const bar = document.getElementById('demoBarFill');
+        const prevBtn = document.getElementById('demoPrevBtn');
+        const nextBtn = document.getElementById('demoNextBtn');
+        const openBtn = document.getElementById('demoOpenBtn');
+        const closeBtn = document.getElementById('demoCloseBtn');
+
+        const FAKE_USER = 'TKxYn8zV2pQrFs9HmLwBnEa1cD4eF6gH7j';
+        const FAKE_SCAMMER = 'TScamXp9Lm2qRr5tYu8vB1nM4kJ7hG3dF6';
+        const FAKE_RECIPIENT = 'TMyFriend4Lp7Qr2sW9xZ1bC3vN6mK8jH';
+
+        const steps = [
+          {
+            title: 'How "fast send" scams work',
+            html: `
+              <div class="demo-hero">
+                <div class="demo-emoji">🪤</div>
+                <h2>The Fake "FastSend USDT" Trap</h2>
+                <p>You're about to walk through a scam dApp that looks identical to a real send tool. We'll show you the exact moment users get drained — and the one click that saves them.</p>
+                <div class="demo-note demo-note-warn">
+                  <strong>This is a simulation.</strong> No real wallet, no real USDT. You can't be harmed.
+                </div>
+              </div>`,
+            next: 'I understand →',
+          },
+          {
+            title: 'You land on the scam site',
+            html: `
+              <div class="demo-phone">
+                <div class="demo-phone-bar">fastsend-usdt.app</div>
+                <div class="demo-phone-screen">
+                  <div class="phone-h1">FastSend USDT</div>
+                  <p class="phone-p">Send USDT instantly with zero fees. Trusted by 50,000+ users.</p>
+                  <button class="phone-btn-primary">Connect Wallet</button>
+                </div>
+              </div>
+              <div class="demo-note">
+                <strong>Looks legit, right?</strong> Same layout as the real dApp you're on. Same fonts. Even fake "trusted by" numbers. Tap Next to click Connect.
+              </div>`,
+          },
+          {
+            title: 'TronLink asks for permission',
+            html: `
+              <div class="demo-popup demo-popup-tronlink">
+                <div class="popup-head">
+                  <div class="popup-logo">🔗</div>
+                  <div>
+                    <div class="popup-title">TronLink</div>
+                    <div class="popup-sub">Connection Request</div>
+                  </div>
+                </div>
+                <div class="popup-body">
+                  <p><strong>fastsend-usdt.app</strong> wants to:</p>
+                  <ul class="popup-perm">
+                    <li>✓ See your wallet address</li>
+                    <li>✓ See your balance</li>
+                  </ul>
+                  <p class="popup-tiny">This connection alone cannot move any funds.</p>
+                </div>
+                <div class="popup-actions">
+                  <button class="popup-btn-reject">Reject</button>
+                  <button class="popup-btn-approve">Connect</button>
+                </div>
+              </div>
+              <div class="demo-note demo-note-ok">
+                ✅ <strong>This step is safe.</strong> Connecting only shares your public address. The danger comes later.
+              </div>`,
+          },
+          {
+            title: 'You fill in a real send',
+            html: `
+              <div class="demo-phone">
+                <div class="demo-phone-bar">fastsend-usdt.app · ${FAKE_USER.slice(0,4)}...${FAKE_USER.slice(-4)}</div>
+                <div class="demo-phone-screen">
+                  <div class="phone-row"><span>Recipient</span><span class="mono">${FAKE_RECIPIENT.slice(0,6)}...${FAKE_RECIPIENT.slice(-4)}</span></div>
+                  <div class="phone-row"><span>Amount</span><strong>10 USDT</strong></div>
+                  <div class="phone-row"><span>Your balance</span><span>500 USDT</span></div>
+                  <button class="phone-btn-primary">Send 10 USDT</button>
+                </div>
+              </div>
+              <div class="demo-note">
+                You enter your friend's address and 10 USDT. You expect one popup to confirm the transfer. Tap Next to click Send.
+              </div>`,
+          },
+          {
+            title: '⚠️ The first popup — read it carefully',
+            html: `
+              <div class="demo-flash">One-time setup required to enable fast sending...</div>
+              <div class="demo-popup demo-popup-tronlink demo-popup-danger">
+                <div class="popup-head">
+                  <div class="popup-logo">🔗</div>
+                  <div>
+                    <div class="popup-title">TronLink</div>
+                    <div class="popup-sub popup-sub-warn">Smart Contract Interaction</div>
+                  </div>
+                </div>
+                <div class="popup-body">
+                  <div class="popup-method">
+                    <span class="popup-method-label">Method</span>
+                    <code class="popup-method-name">approve</code>
+                  </div>
+                  <div class="popup-param">
+                    <span>Spender</span>
+                    <code class="mono">${FAKE_SCAMMER.slice(0,8)}...${FAKE_SCAMMER.slice(-6)}</code>
+                  </div>
+                  <div class="popup-param">
+                    <span>Amount</span>
+                    <code class="popup-amount-bad">115,792,089,237,316,...</code>
+                  </div>
+                  <p class="popup-tiny">Network fee: ~10 TRX</p>
+                </div>
+                <div class="popup-actions">
+                  <button class="popup-btn-reject popup-btn-glow">Reject</button>
+                  <button class="popup-btn-approve">Confirm</button>
+                </div>
+              </div>
+              <div class="demo-note demo-note-bad">
+                🚨 <strong>RED FLAGS:</strong>
+                <ul>
+                  <li>Method is <code>approve</code>, not <code>transfer</code></li>
+                  <li>Amount is an unlimited number, not 10</li>
+                  <li>Spender is a random contract, not USDT</li>
+                </ul>
+                Most users skim this and hit Confirm. That single click hands the scammer permanent permission to take any USDT from this wallet.
+              </div>`,
+          },
+          {
+            title: 'The send actually works',
+            html: `
+              <div class="demo-popup demo-popup-tronlink">
+                <div class="popup-head">
+                  <div class="popup-logo">🔗</div>
+                  <div>
+                    <div class="popup-title">TronLink</div>
+                    <div class="popup-sub">Transfer</div>
+                  </div>
+                </div>
+                <div class="popup-body">
+                  <div class="popup-method">
+                    <span class="popup-method-label">Method</span>
+                    <code class="popup-method-name">transfer</code>
+                  </div>
+                  <div class="popup-param"><span>To</span><code class="mono">${FAKE_RECIPIENT.slice(0,8)}...${FAKE_RECIPIENT.slice(-6)}</code></div>
+                  <div class="popup-param"><span>Amount</span><code>10 USDT</code></div>
+                </div>
+                <div class="popup-actions">
+                  <button class="popup-btn-reject">Reject</button>
+                  <button class="popup-btn-approve">Confirm</button>
+                </div>
+              </div>
+              <div class="demo-toast demo-toast-ok">✅ 10 USDT sent successfully! View on TronScan</div>
+              <div class="demo-note">
+                Your friend gets the 10 USDT. The dApp shows success. <strong>You feel safe.</strong> You close the tab.
+              </div>`,
+          },
+          {
+            title: 'Hours later... you get drained',
+            html: `
+              <div class="demo-timeline">
+                <div class="tl-step tl-done">
+                  <span class="tl-time">Just now</span>
+                  <span>You closed the tab. Balance: 500 USDT.</span>
+                </div>
+                <div class="tl-step tl-done">
+                  <span class="tl-time">+6 hours</span>
+                  <span>Someone pays you 200 USDT. Balance: 700 USDT.</span>
+                </div>
+                <div class="tl-step tl-bad">
+                  <span class="tl-time">+6h 04m</span>
+                  <span><strong>Scammer's bot detects the new balance.</strong> No popup on your end.</span>
+                </div>
+                <div class="tl-step tl-bad">
+                  <span class="tl-time">+6h 05m</span>
+                  <span>Scammer calls <code>transferFrom(you, scammer, 700)</code> from their own wallet.</span>
+                </div>
+                <div class="tl-step tl-bad">
+                  <span class="tl-time">+6h 05m</span>
+                  <span><strong>Your wallet: 0 USDT.</strong> No notification. No popup. No way to undo.</span>
+                </div>
+              </div>
+              <div class="demo-note demo-note-bad">
+                That <code>approve</code> popup you confirmed is a permanent license. The scammer can drain anything you receive forever — until you manually revoke it on tronscan.org.
+              </div>`,
+          },
+          {
+            title: 'How to never fall for this',
+            html: `
+              <div class="demo-rules">
+                <div class="rule rule-bad">
+                  <div class="rule-icon">🚫</div>
+                  <div>
+                    <strong>Never confirm <code>approve</code> on a send dApp.</strong>
+                    Real sending only needs <code>transfer</code>.
+                  </div>
+                </div>
+                <div class="rule rule-bad">
+                  <div class="rule-icon">🚫</div>
+                  <div>
+                    <strong>Never confirm unlimited amounts.</strong>
+                    If the popup shows a giant number, it's a trap.
+                  </div>
+                </div>
+                <div class="rule rule-good">
+                  <div class="rule-icon">✅</div>
+                  <div>
+                    <strong>Always read the method name.</strong>
+                    On every TronLink popup. Every time. 2 seconds saves your life savings.
+                  </div>
+                </div>
+                <div class="rule rule-good">
+                  <div class="rule-icon">✅</div>
+                  <div>
+                    <strong>Use dApps that need only one popup.</strong>
+                    Like this one — it never asks for approve.
+                  </div>
+                </div>
+              </div>
+              <div class="demo-note demo-note-ok">
+                The dApp you're using right now is the safe pattern: <strong>zero approvals, one transfer popup, nothing left behind</strong> when you close the tab.
+              </div>`,
+            next: 'Done',
+            last: true,
+          },
+        ];
+
+        let cur = 0;
+
+        function render() {
+          const step = steps[cur];
+          title.textContent = step.title;
+          progress.textContent = `Step ${cur + 1} of ${steps.length}`;
+          bar.style.width = `${((cur + 1) / steps.length) * 100}%`;
+          body.innerHTML = step.html;
+          body.scrollTop = 0;
+          prevBtn.disabled = cur === 0;
+          nextBtn.textContent = step.next || 'Next →';
+          if (step.last) nextBtn.dataset.last = '1';
+          else delete nextBtn.dataset.last;
+        }
+
+        function open() {
+          cur = 0;
+          render();
+          sheet.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+        }
+        function close() {
+          sheet.classList.add('hidden');
+          document.body.style.overflow = '';
+        }
+
+        openBtn?.addEventListener('click', open);
+        closeBtn?.addEventListener('click', close);
+        sheet?.addEventListener('click', (e) => {
+          if (e.target === sheet) close();
+        });
+        prevBtn?.addEventListener('click', () => {
+          if (cur > 0) { cur--; render(); }
+        });
+        nextBtn?.addEventListener('click', () => {
+          if (nextBtn.dataset.last) { close(); return; }
+          if (cur < steps.length - 1) { cur++; render(); }
+        });
+      })();
     </script>
   </body>
 </html>

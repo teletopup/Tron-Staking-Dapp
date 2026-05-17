@@ -272,14 +272,18 @@
     showOpenInTronLinkPrompt();
   }
 
-  // Build the TronLink mobile deep link that opens the current page inside
-  // TronLink's in-app dApp browser (where window.tronWeb is injected).
+  // Build the TronLink mobile deep link that asks TronLink to open the
+  // current page inside its in-app dApp browser (where window.tronWeb is
+  // injected). This is the documented "pull.activity" scheme.
   function buildTronLinkDeepLink(url) {
+    const target = url || window.location.href;
     const payload = {
-      url: url || window.location.href,
+      url: target,
       action: "open",
       protocol: "tronlink",
       version: "1.0",
+      dappIcon: window.location.origin + "/favicon.svg",
+      dappName: document.title || "Send",
     };
     return "tronlinkoutside://pull.activity?param=" + encodeURIComponent(JSON.stringify(payload));
   }
@@ -288,33 +292,68 @@
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
   }
 
+  function renderQrInto(el, text) {
+    if (!el) return;
+    el.innerHTML = "";
+    if (window.QRCode) {
+      try {
+        new window.QRCode(el, {
+          text,
+          width: 220,
+          height: 220,
+          correctLevel: window.QRCode.CorrectLevel.M,
+        });
+        return;
+      } catch (_) {}
+    }
+    el.textContent = text;
+  }
+
   function showOpenInTronLinkPrompt() {
-    const btn = document.getElementById("openInTronlinkBtn");
+    const title = document.getElementById("installPromptTitle");
     const sub = document.getElementById("installPromptSub");
-    const deepLink = buildTronLinkDeepLink();
-    if (btn) {
-      btn.setAttribute("href", deepLink);
-      btn.onclick = (e) => {
-        // Let the OS try to hand off to TronLink. If nothing handles it after
-        // ~1.5s, fall back to the install page.
-        const t = setTimeout(() => {
-          window.location.href = "https://www.tronlink.org/";
-        }, 1500);
-        // Cancel the fallback if the user comes back (app switched away).
-        const cancel = () => { clearTimeout(t); window.removeEventListener("pagehide", cancel); window.removeEventListener("blur", cancel); };
-        window.addEventListener("pagehide", cancel, { once: true });
-        window.addEventListener("blur", cancel, { once: true });
-        // On desktop the deep link won't resolve — show install hint instead.
-        if (!isMobileUA()) {
-          e.preventDefault();
-          clearTimeout(t);
-          if (sub) sub.textContent = "TronLink Mobile is required. Open this page on your phone, or install the TronLink browser extension on desktop.";
-          window.open("https://www.tronlink.org/", "_blank", "noopener");
+    const btn = document.getElementById("openInTronlinkBtn");
+    const qrBox = document.getElementById("installPromptQrBox");
+    const qr = document.getElementById("installPromptQr");
+    const urlInput = document.getElementById("installPromptUrl");
+    const copyBtn = document.getElementById("installPromptCopyBtn");
+    const closeBtn = document.getElementById("installPromptCloseBtn");
+
+    const pageUrl = window.location.href;
+    if (urlInput) urlInput.value = pageUrl;
+
+    if (isMobileUA()) {
+      if (title) title.textContent = "Open in TronLink";
+      if (sub) sub.textContent = "Tap the button to open this page inside the TronLink app. If nothing happens, scroll down and paste the URL into TronLink's Discover tab.";
+      if (btn) {
+        btn.style.display = "";
+        btn.setAttribute("href", buildTronLinkDeepLink(pageUrl));
+      }
+      if (qrBox) qrBox.style.display = "none";
+    } else {
+      if (title) title.textContent = "Open this dApp in TronLink Mobile";
+      if (sub) sub.textContent = "TronLink browser extension wasn't detected. The easiest way: scan this code from TronLink on your phone.";
+      if (btn) btn.style.display = "none";
+      if (qrBox) {
+        qrBox.style.display = "";
+        renderQrInto(qr, pageUrl);
+      }
+    }
+
+    if (copyBtn && urlInput) {
+      copyBtn.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(pageUrl);
+          copyBtn.textContent = "Copied!";
+          setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+        } catch (_) {
+          urlInput.select();
+          document.execCommand && document.execCommand("copy");
         }
       };
     }
-    if (sub && !isMobileUA()) {
-      sub.textContent = "TronLink Mobile is required. Open this page on your phone, or install the TronLink browser extension on desktop.";
+    if (closeBtn) {
+      closeBtn.onclick = () => { els.installPrompt.classList.add("hidden"); };
     }
     els.installPrompt.classList.remove("hidden");
   }

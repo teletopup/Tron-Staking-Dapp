@@ -7,6 +7,36 @@
   const STAKING_ABI = window.STAKING_ABI;
 
   // -----------------------------------------------------------------------
+  // Admin overrides (localStorage) — let user point the dApp at any
+  // deployed contract without editing config.js. Per-browser only.
+  // -----------------------------------------------------------------------
+
+  const LS_KEY = "stakingDappOverrides_v1";
+  const DEFAULTS = {
+    NETWORK: cfg.NETWORK,
+    TRONSCAN_BASE: cfg.TRONSCAN_BASE,
+    STAKING_ADDRESS: cfg.STAKING_ADDRESS,
+    TOKEN_ADDRESS: cfg.TOKEN_ADDRESS,
+  };
+
+  function loadOverrides() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const o = JSON.parse(raw);
+      if (o.NETWORK) {
+        cfg.NETWORK = o.NETWORK;
+        cfg.TRONSCAN_BASE = o.NETWORK === "mainnet"
+          ? "https://tronscan.org"
+          : "https://nile.tronscan.org";
+      }
+      if (o.STAKING_ADDRESS) cfg.STAKING_ADDRESS = o.STAKING_ADDRESS;
+      if (o.TOKEN_ADDRESS) cfg.TOKEN_ADDRESS = o.TOKEN_ADDRESS;
+    } catch (_) {}
+  }
+  loadOverrides();
+
+  // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
 
@@ -42,6 +72,16 @@
     claimBtn: $("claimBtn"),
     installPrompt: $("installPrompt"),
     toasts: $("toasts"),
+    adminToggle: $("adminToggle"),
+    adminPanel: $("adminPanel"),
+    adminNetwork: $("adminNetwork"),
+    adminStakingAddr: $("adminStakingAddr"),
+    adminTokenAddr: $("adminTokenAddr"),
+    adminSaveBtn: $("adminSaveBtn"),
+    adminResetBtn: $("adminResetBtn"),
+    adminCurNet: $("adminCurNet"),
+    adminCurStaking: $("adminCurStaking"),
+    adminCurToken: $("adminCurToken"),
   };
 
   els.netBadge.textContent = cfg.NETWORK;
@@ -338,6 +378,101 @@
   els.unstakeBtn.addEventListener("click", onUnstake);
   els.claimBtn.addEventListener("click", onClaim);
   els.maxBtn.addEventListener("click", onMax);
+
+  // -----------------------------------------------------------------------
+  // Admin panel wire-up
+  // -----------------------------------------------------------------------
+
+  function isValidTronAddr(s) {
+    // Base58 TRON addresses always start with "T" and are 34 chars long.
+    return typeof s === "string" && /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(s.trim());
+  }
+
+  function updateAdminCurrent() {
+    els.adminCurNet.textContent = cfg.NETWORK;
+    els.adminCurStaking.textContent = cfg.STAKING_ADDRESS;
+    els.adminCurToken.textContent = cfg.TOKEN_ADDRESS;
+    els.netBadge.textContent = cfg.NETWORK;
+  }
+
+  function populateAdminInputs() {
+    els.adminNetwork.value = cfg.NETWORK === "mainnet" ? "mainnet" : "nile";
+    els.adminStakingAddr.value = cfg.STAKING_ADDRESS;
+    els.adminTokenAddr.value = cfg.TOKEN_ADDRESS;
+  }
+
+  els.adminToggle.addEventListener("click", () => {
+    const open = els.adminPanel.classList.toggle("hidden") === false;
+    els.adminToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      populateAdminInputs();
+      updateAdminCurrent();
+    }
+  });
+
+  els.adminSaveBtn.addEventListener("click", async () => {
+    const staking = els.adminStakingAddr.value.trim();
+    const token = els.adminTokenAddr.value.trim();
+    const network = els.adminNetwork.value;
+
+    if (!isValidTronAddr(staking)) {
+      toast("Staking address looks invalid (must start with T, 34 chars)", "error");
+      return;
+    }
+    if (!isValidTronAddr(token)) {
+      toast("Token address looks invalid (must start with T, 34 chars)", "error");
+      return;
+    }
+
+    const overrides = {
+      NETWORK: network,
+      STAKING_ADDRESS: staking,
+      TOKEN_ADDRESS: token,
+    };
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(overrides));
+    } catch (e) {
+      toast("Could not save (storage blocked)", "error");
+      return;
+    }
+
+    cfg.NETWORK = network;
+    cfg.TRONSCAN_BASE = network === "mainnet"
+      ? "https://tronscan.org"
+      : "https://nile.tronscan.org";
+    cfg.STAKING_ADDRESS = staking;
+    cfg.TOKEN_ADDRESS = token;
+
+    updateAdminCurrent();
+    toast("Saved. Reloading contracts…", "info");
+
+    if (state.tronWeb && state.address) {
+      try {
+        await initContracts();
+        await refresh();
+        toast("Contracts switched", "info");
+      } catch (e) {
+        toast("Reload failed: " + (e.message || e), "error");
+      }
+    }
+  });
+
+  els.adminResetBtn.addEventListener("click", () => {
+    try { localStorage.removeItem(LS_KEY); } catch (_) {}
+    cfg.NETWORK = DEFAULTS.NETWORK;
+    cfg.TRONSCAN_BASE = DEFAULTS.TRONSCAN_BASE;
+    cfg.STAKING_ADDRESS = DEFAULTS.STAKING_ADDRESS;
+    cfg.TOKEN_ADDRESS = DEFAULTS.TOKEN_ADDRESS;
+    populateAdminInputs();
+    updateAdminCurrent();
+    toast("Reset to config.js defaults", "info");
+    if (state.tronWeb && state.address) {
+      initContracts().then(refresh).catch(() => {});
+    }
+  });
+
+  // Populate "currently active" on load (even before panel is opened).
+  updateAdminCurrent();
 
   // React to TronLink account/chain changes.
   window.addEventListener("message", (ev) => {

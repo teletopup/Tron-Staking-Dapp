@@ -4,6 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>USDT Staking</title>
+    <meta name="description" content="USDT staking dApp on TRON — stake USDT, earn rewards." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -70,6 +75,59 @@
           at any time. Only approve contracts you have reviewed.
         </p>
       </section>
+
+      <section class="card preview-note">
+        <h2 class="card-title">Preview Mode</h2>
+        <p class="hint">
+          This is a live preview of the dApp UI. To make it functional, deploy
+          the contracts and paste the proxy + token addresses into the Admin
+          panel below (or edit <code>public/config.js</code>). Then connect
+          TronLink set to the matching network.
+        </p>
+      </section>
+
+      <section class="card admin-card">
+        <button type="button" id="adminToggle" class="admin-toggle" aria-expanded="false">
+          <span>⚙ Admin — Change Contract Addresses</span>
+          <span class="admin-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div id="adminPanel" class="admin-panel hidden">
+          <p class="hint">
+            Saved in your browser only (localStorage). Affects this device.
+            To change defaults for everyone, edit <code>public/config.js</code>.
+          </p>
+
+          <label class="field">
+            <span class="field-label">Network</span>
+            <select id="adminNetwork">
+              <option value="nile">Nile testnet</option>
+              <option value="mainnet">Mainnet</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field-label">Staking proxy address</span>
+            <input id="adminStakingAddr" type="text" placeholder="T..." spellcheck="false" autocapitalize="off" autocomplete="off" />
+          </label>
+
+          <label class="field">
+            <span class="field-label">Token (USDT) address</span>
+            <input id="adminTokenAddr" type="text" placeholder="T..." spellcheck="false" autocapitalize="off" autocomplete="off" />
+          </label>
+
+          <div class="btn-row admin-btn-row">
+            <button id="adminSaveBtn" type="button" class="btn btn-primary">Save &amp; Reload</button>
+            <button id="adminResetBtn" type="button" class="btn">Reset to defaults</button>
+          </div>
+
+          <p class="hint admin-current">
+            <strong>Currently active:</strong><br />
+            Network: <code id="adminCurNet">—</code><br />
+            Staking: <code id="adminCurStaking">—</code><br />
+            Token: <code id="adminCurToken">—</code>
+          </p>
+        </div>
+      </section>
     </main>
 
     <div id="installPrompt" class="modal hidden">
@@ -91,8 +149,6 @@
 
     <div id="toasts" class="toasts"></div>
 
-    <!-- TronWeb is injected by TronLink, but we also load a CDN copy
-         so read-only views work before the user connects. -->
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
     <script src="config.js"></script>
     <script src="app.js"></script>

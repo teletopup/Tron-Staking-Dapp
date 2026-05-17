@@ -471,3 +471,16 @@ html, body {
   #amountInput { font-size: 18px; }
   .toasts { left: 12px; right: 12px; max-width: none; }
 }
+
+.safety-link {
+  text-align: center;
+  margin: 20px 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.safety-link a {
+  color: var(--warn);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--warn);
+}
+.safety-link a:hover { color: #fff; border-bottom-style: solid; }

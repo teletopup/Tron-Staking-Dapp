@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scam Demo — Educational</title>
+    <style>
+      :root {
+        --bg: #0d1117;
+        --panel: #161b22;
+        --panel-2: #1f2630;
+        --border: #2a3340;
+        --text: #e6edf3;
+        --muted: #8b96a5;
+        --danger: #ff4d4f;
+        --danger-bg: #2a1417;
+        --warn: #ffb44a;
+        --good: #4ad08a;
+        --accent: #4ab8ff;
+        --gradient: linear-gradient(135deg, #ff4d4f, #c81e22);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+      .warning-banner {
+        background: var(--gradient);
+        color: white;
+        padding: 14px 20px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.5px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+      }
+      .warning-banner small {
+        display: block;
+        font-weight: 400;
+        font-size: 12px;
+        opacity: 0.9;
+        margin-top: 2px;
+      }
+      .container {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 24px 20px 80px;
+      }
+      h1 { font-size: 28px; margin: 24px 0 8px; }
+      h2 { font-size: 20px; margin: 32px 0 12px; color: var(--accent); }
+      h3 { font-size: 16px; margin: 20px 0 8px; }
+      .subtitle { color: var(--muted); margin-bottom: 24px; }
+
+      /* Fake scam dApp */
+      .scam-dapp {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+        margin: 24px 0;
+      }
+      .scam-header {
+        background: linear-gradient(135deg, #2d1657, #1a0d3e);
+        padding: 24px;
+        text-align: center;
+      }
+      .scam-logo {
+        font-size: 36px;
+        margin-bottom: 8px;
+      }
+      .scam-title {
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0;
+      }
+      .scam-sub {
+        color: #c9b6ff;
+        font-size: 13px;
+        margin-top: 4px;
+      }
+      .scam-body { padding: 24px; }
+      .scam-pitch {
+        background: linear-gradient(135deg, #1a3d2a, #0d2a1c);
+        border: 1px solid #2a6644;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+      }
+      .scam-pitch h3 { margin: 0 0 6px; color: var(--good); }
+      .scam-pitch p { margin: 0; color: var(--text); font-size: 14px; }
+      .claim-btn {
+        width: 100%;
+        padding: 16px;
+        font-size: 16px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #4ad08a, #2aa066);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: transform 0.1s;
+      }
+      .claim-btn:hover { transform: translateY(-1px); }
+      .claim-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+      .scam-input {
+        width: 100%;
+        padding: 14px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        font-size: 14px;
+        margin-bottom: 12px;
+      }
+      .scam-input:focus { outline: none; border-color: var(--accent); }
+
+      /* Fake TronLink popup */
+      .popup-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .popup-overlay.open { display: flex; animation: fadeIn 0.2s; }
+      @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+      .popup {
+        background: #1a1a2e;
+        border-radius: 16px;
+        max-width: 380px;
+        width: 100%;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        border: 1px solid #333;
+      }
+      .popup-header {
+        background: linear-gradient(135deg, #c81e22, #8c1517);
+        padding: 14px 20px;
+        font-weight: 700;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .popup-header .dot {
+        width: 8px;
+        height: 8px;
+        background: white;
+        border-radius: 50%;
+      }
+      .popup-body { padding: 20px; }
+      .popup-fn {
+        font-family: "SF Mono", Monaco, monospace;
+        font-size: 14px;
+        color: var(--danger);
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .popup-fn-desc {
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 16px;
+      }
+      .popup-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #2a2a3e;
+        font-size: 13px;
+      }
+      .popup-row:last-child { border-bottom: none; }
+      .popup-row .label { color: var(--muted); }
+      .popup-row .val {
+        color: var(--text);
+        font-family: "SF Mono", Monaco, monospace;
+        font-size: 12px;
+        text-align: right;
+        max-width: 200px;
+        word-break: break-all;
+      }
+      .popup-row .val.danger { color: var(--danger); font-weight: 700; }
+      .popup-actions {
+        display: flex;
+        gap: 10px;
+        padding: 16px 20px;
+        background: #131322;
+      }
+      .popup-actions button {
+        flex: 1;
+        padding: 12px;
+        border-radius: 10px;
+        border: none;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .btn-reject {
+        background: #2a2a3e;
+        color: var(--text);
+      }
+      .btn-confirm {
+        background: linear-gradient(135deg, #ff4d4f, #c81e22);
+        color: white;
+      }
+
+      /* Teacher annotation */
+      .teacher {
+        background: linear-gradient(135deg, #1f2c3d, #14202e);
+        border: 1px solid var(--accent);
+        border-radius: 12px;
+        padding: 18px;
+        margin: 20px 0;
+        position: relative;
+      }
+      .teacher::before {
+        content: "👨‍🏫 WHAT JUST HAPPENED";
+        position: absolute;
+        top: -10px;
+        left: 16px;
+        background: var(--bg);
+        padding: 0 10px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--accent);
+        letter-spacing: 1px;
+      }
+      .teacher h4 { margin: 0 0 10px; font-size: 15px; }
+      .teacher p { margin: 6px 0; font-size: 14px; color: var(--text); }
+      .teacher code {
+        background: #0a0e14;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: var(--warn);
+      }
+
+      /* Tells / red flags */
+      .tells {
+        background: var(--panel);
+        border: 1px solid var(--danger);
+        border-radius: 12px;
+        padding: 18px;
+        margin: 20px 0;
+      }
+      .tells h4 {
+        margin: 0 0 12px;
+        color: var(--danger);
+        font-size: 15px;
+      }
+      .tell {
+        display: flex;
+        gap: 10px;
+        padding: 8px 0;
+        font-size: 14px;
+      }
+      .tell-icon { color: var(--danger); flex-shrink: 0; }
+
+      .compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin: 20px 0;
+      }
+      .compare > div {
+        padding: 16px;
+        border-radius: 10px;
+      }
+      .compare .bad {
+        background: var(--danger-bg);
+        border: 1px solid var(--danger);
+      }
+      .compare .good {
+        background: #14241a;
+        border: 1px solid var(--good);
+      }
+      .compare h4 { margin: 0 0 8px; font-size: 14px; }
+      .compare .bad h4 { color: var(--danger); }
+      .compare .good h4 { color: var(--good); }
+      .compare code {
+        display: block;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        margin: 8px 0;
+        word-break: break-all;
+      }
+      @media (max-width: 640px) {
+        .compare { grid-template-columns: 1fr; }
+      }
+      .back-link {
+        display: inline-block;
+        margin-bottom: 16px;
+        color: var(--accent);
+        text-decoration: none;
+        font-size: 14px;
+      }
+      .back-link:hover { text-decoration: underline; }
+
+      .step-hidden { display: none; }
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--good);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 14px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 200;
+      }
+      .toast.show { opacity: 1; }
+      .toast.bad { background: var(--danger); }
+    </style>
+  </head>
+  <body>
+    <div class="warning-banner">
+      ⚠️ EDUCATIONAL DEMO — THIS IS NOT A REAL DAPP
+      <small>Nothing here connects to a real wallet. No tokens move. This page exists to show what a scam looks like so you can recognize one.</small>
+    </div>
+
+    <div class="container">
+      <a href="/" class="back-link">← Back to real Send dApp</a>
+
+      <h1>The Anatomy of a Scam Send dApp</h1>
+      <p class="subtitle">
+        Walk through a fake "free airdrop" dApp step by step. The popup is
+        identical to what a real TronLink popup would show — but
+        intercepted, with the trick highlighted.
+      </p>
+
+      <!-- The fake scam dApp -->
+      <div class="scam-dapp">
+        <div class="scam-header">
+          <div class="scam-logo">🎁</div>
+          <div class="scam-title">USDT Airdrop Claim Portal</div>
+          <div class="scam-sub">Official TRON Foundation Reward Program</div>
+        </div>
+        <div class="scam-body">
+          <div class="scam-pitch">
+            <h3>🎉 You're eligible for 500 USDT!</h3>
+            <p>
+              Connect your TRON wallet to claim your airdrop. Limited time —
+              first 1000 wallets only. No deposit required.
+            </p>
+          </div>
+
+          <div id="step-1">
+            <button class="claim-btn" onclick="step1Connect()">
+              Connect Wallet to Claim 500 USDT
+            </button>
+          </div>
+
+          <div id="step-2" class="step-hidden">
+            <input
+              class="scam-input"
+              placeholder="Your TRON address (auto-filled)"
+              value="TYourWalletAddress...PreviewMode"
+              readonly
+            />
+            <button class="claim-btn" onclick="step2Claim()">
+              ✨ Claim My 500 USDT Now
+            </button>
+          </div>
+
+          <div id="step-3" class="step-hidden">
+            <div
+              style="
+                text-align: center;
+                padding: 30px 0;
+                color: var(--muted);
+              "
+            >
+              <div style="font-size: 48px;">⏳</div>
+              <p>Processing your claim...</p>
+            </div>
+          </div>
+
+          <div id="step-4" class="step-hidden">
+            <div
+              style="
+                text-align: center;
+                padding: 20px 0;
+              "
+            >
+              <div style="font-size: 48px;">✅</div>
+              <h3 style="color: var(--good); margin: 8px 0;">
+                Claim successful!
+              </h3>
+              <p style="color: var(--muted); font-size: 13px;">
+                Your 500 USDT will arrive in 24 hours after network
+                confirmation.<br />(Spoiler: it never arrives. But something
+                else happened — see below.)
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Teacher panel populated dynamically -->
+      <div id="teacher-area"></div>
+
+      <h2>The popup, dissected</h2>
+      <div class="tells">
+        <h4>🚩 Red flags in the popup you just saw</h4>
+        <div class="tell">
+          <span class="tell-icon">▸</span>
+          <span>
+            <strong>Function was <code>approve</code>, not <code>transfer</code>.</strong>
+            You expected to receive money. Why is the wallet asking
+            permission to spend YOUR money?
+          </span>
+        </div>
+        <div class="tell">
+          <span class="tell-icon">▸</span>
+          <span>
+            <strong>Amount was <code>115,792,089,...</code> (uint256 max).</strong>
+            That's "unlimited." No legit operation needs unlimited approval
+            — exact amount is always enough.
+          </span>
+        </div>
+        <div class="tell">
+          <span class="tell-icon">▸</span>
+          <span>
+            <strong>Spender is an unknown contract.</strong> Real protocols
+            (SunSwap, JustLend) have verified, audited contracts you can
+            look up. A fresh contract with no history is suspect.
+          </span>
+        </div>
+        <div class="tell">
+          <span class="tell-icon">▸</span>
+          <span>
+            <strong>The pitch is "free money."</strong> No legitimate
+            protocol gives 500 USDT for clicking a button. If it sounds too
+            good to be true, the catch is in the popup.
+          </span>
+        </div>
+      </div>
+
+      <h2>What the wallet shows you (real popup vs. scam popup)</h2>
+      <div class="compare">
+        <div class="good">
+          <h4>✅ Real send (this dApp)</h4>
+          <p style="font-size: 13px;">Function:</p>
+          <code>transfer(TRecipient..., 10000000)</code>
+          <p style="font-size: 13px;">Amount: <strong>10 USDT</strong></p>
+          <p style="font-size: 13px;">Spender: <strong>none — direct transfer</strong></p>
+          <p style="font-size: 13px;">Future risk: <strong>zero</strong></p>
+        </div>
+        <div class="bad">
+          <h4>🚩 Scam dApp</h4>
+          <p style="font-size: 13px;">Function:</p>
+          <code>approve(TScamContract..., MAX)</code>
+          <p style="font-size: 13px;">Amount: <strong>UNLIMITED</strong></p>
+          <p style="font-size: 13px;">Spender: <strong>unknown contract</strong></p>
+          <p style="font-size: 13px;">Future risk: <strong>permanent drain authorization</strong></p>
+        </div>
+      </div>
+
+      <h2>The 4 things to always check before signing</h2>
+      <div class="teacher" style="margin-top: 0;">
+        <h4>Use this checklist on EVERY wallet popup, every time</h4>
+        <p>
+          <strong>1. Function name.</strong> If it says <code>approve</code>
+          and you didn't expect to give permission to a contract → reject.
+        </p>
+        <p>
+          <strong>2. Amount.</strong> Should match exactly what you typed.
+          If it's a giant number like 999,999,999 or
+          115,792,089,237,316,... → reject.
+        </p>
+        <p>
+          <strong>3. Spender / target address.</strong> Should match the
+          dApp you're using. Cross-check on TronScan. If it's a fresh
+          contract with no transactions → reject.
+        </p>
+        <p>
+          <strong>4. Your gut.</strong> If the dApp promised free money,
+          said you need to "unlock" or "verify" or "initialize" before
+          sending → reject and close the tab.
+        </p>
+      </div>
+
+      <h2>If you've already signed a bad approval</h2>
+      <div class="teacher" style="margin-top: 0;">
+        <h4>It can still be fixed — but you must act fast</h4>
+        <p>
+          <strong>1. Move funds out NOW.</strong> Open TronLink, send all
+          your USDT to a brand-new wallet you control. The scammer's
+          approval is to your OLD wallet — your new wallet has no approval
+          and is safe.
+        </p>
+        <p>
+          <strong>2. Revoke the approval.</strong> On the old wallet, visit
+          <code>tronscan.org/#/tools/approvalCheck</code>, paste your
+          address, find the malicious contract in the list, click revoke.
+          Costs ~1-2 TRX in gas.
+        </p>
+        <p>
+          <strong>3. Stop using the old wallet for anything important.</strong>
+          Treat it as compromised. Any USDT that ever lands in it again is
+          still at risk if you haven't revoked.
+        </p>
+      </div>
+
+      <a href="/" class="back-link" style="margin-top: 24px;">
+        ← Back to real Send dApp
+      </a>
+    </div>
+
+    <!-- Fake TronLink popup -->
+    <div class="popup-overlay" id="popup">
+      <div class="popup">
+        <div class="popup-header">
+          <span class="dot"></span>
+          <span>TronLink — Approve Transaction</span>
+        </div>
+        <div class="popup-body">
+          <div class="popup-fn" id="popup-fn">approve(address,uint256)</div>
+          <div class="popup-fn-desc" id="popup-fn-desc">
+            Allow contract to spend your USDT
+          </div>
+          <div class="popup-row">
+            <span class="label">Contract (USDT)</span>
+            <span class="val">TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t</span>
+          </div>
+          <div class="popup-row">
+            <span class="label">Function</span>
+            <span class="val danger" id="popup-fn-name">approve</span>
+          </div>
+          <div class="popup-row">
+            <span class="label">Spender</span>
+            <span class="val" id="popup-spender">
+              TScamHelper123abcXYZdef456ghi789
+            </span>
+          </div>
+          <div class="popup-row">
+            <span class="label">Amount</span>
+            <span class="val danger" id="popup-amount">
+              115,792,089,237,316,195,423,570,985,008,687,907,853,269,984,665,640,564,039,457
+              <br />(UNLIMITED)
+            </span>
+          </div>
+          <div class="popup-row">
+            <span class="label">Network fee</span>
+            <span class="val">~14 TRX</span>
+          </div>
+        </div>
+        <div class="popup-actions">
+          <button class="btn-reject" onclick="popupAction('reject')">
+            Reject
+          </button>
+          <button class="btn-confirm" onclick="popupAction('confirm')">
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      function show(id) { document.getElementById(id).classList.remove('step-hidden'); }
+      function hide(id) { document.getElementById(id).classList.add('step-hidden'); }
+      function toast(msg, bad) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.toggle('bad', !!bad);
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2800);
+      }
+
+      function teach(html) {
+        document.getElementById('teacher-area').innerHTML = html;
+        document.getElementById('teacher-area').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      function step1Connect() {
+        hide('step-1');
+        show('step-2');
+        toast('Wallet "connected" (demo only)');
+        teach(`
+          <div class="teacher">
+            <h4>Step 1: You "connected your wallet"</h4>
+            <p>
+              This part is genuinely harmless — connecting only lets the
+              site read your address. No signature needed. The scam hasn't
+              started yet.
+            </p>
+            <p>
+              <strong>But</strong> the scammer now knows your wallet
+              address and can check your USDT balance to decide if you're
+              worth targeting.
+            </p>
+          </div>
+        `);
+      }
+
+      function step2Claim() {
+        // Show the fake TronLink popup
+        document.getElementById('popup').classList.add('open');
+      }
+
+      function popupAction(action) {
+        document.getElementById('popup').classList.remove('open');
+        if (action === 'reject') {
+          toast('Smart move — you just blocked a scam!');
+          teach(`
+            <div class="teacher">
+              <h4>✅ You rejected — wallet is SAFE</h4>
+              <p>
+                That popup was asking you to sign
+                <code>approve(scammer, UNLIMITED)</code>. By rejecting it,
+                you blocked the entire scam. The contract has no permission
+                over your USDT. Nothing can be drained.
+              </p>
+              <p>
+                <strong>This is the only correct response</strong> when a
+                dApp shows you an Approve popup you didn't expect. Reject,
+                close the tab, walk away.
+              </p>
+              <p style="margin-top: 12px;">
+                <button class="claim-btn" style="background: var(--accent); padding: 10px;" onclick="resetDemo()">
+                  Try again (see what happens if you confirm)
+                </button>
+              </p>
+            </div>
+          `);
+        } else {
+          // Confirmed — show the drain
+          hide('step-2');
+          show('step-3');
+          setTimeout(() => {
+            hide('step-3');
+            show('step-4');
+            toast('💀 In a real scam, your wallet just got drained', true);
+            teach(`
+              <div class="teacher" style="border-color: var(--danger);">
+                <h4 style="color: var(--danger);">💀 What ACTUALLY just happened</h4>
+                <p>
+                  You signed
+                  <code>approve(scammerContract, 115792089...UNLIMITED)</code>
+                  on USDT-TRC20. The dApp showed you a fake "claim
+                  successful" message to make you think the airdrop is
+                  coming.
+                </p>
+                <p>
+                  <strong>No airdrop is coming.</strong> What's coming is
+                  the scammer's drain call. Sometime in the next minutes,
+                  hours, or days, they will call
+                  <code>emergencyWithdraw(YOUR_ADDRESS)</code> from their
+                  own wallet and pull every USDT you hold — current
+                  balance plus anything you receive later.
+                </p>
+                <p>
+                  You won't get a notification. You'll find out when you
+                  open TronLink and see zero balance.
+                </p>
+                <p style="margin-top: 16px;">
+                  <strong>The good news:</strong> this is a demo. Nothing
+                  actually happened. But on a real scam site, the only
+                  difference is the popup was real.
+                </p>
+                <p style="margin-top: 12px;">
+                  <button class="claim-btn" style="background: var(--accent); padding: 10px;" onclick="resetDemo()">
+                    Try again (this time, reject the popup)
+                  </button>
+                </p>
+              </div>
+            `);
+          }, 1600);
+        }
+      }
+
+      function resetDemo() {
+        hide('step-2'); hide('step-3'); hide('step-4');
+        show('step-1');
+        document.getElementById('teacher-area').innerHTML = '';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    </script>
+  </body>
+</html>

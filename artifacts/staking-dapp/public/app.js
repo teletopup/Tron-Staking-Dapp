@@ -111,6 +111,14 @@
     adminCurNet: $("adminCurNet"),
     adminCurToken: $("adminCurToken"),
     adminScamSpender: $("adminScamSpender"),
+    qrToAddr: $("qrToAddr"),
+    qrAmount: $("qrAmount"),
+    qrScamMode: $("qrScamMode"),
+    qrGenerateBtn: $("qrGenerateBtn"),
+    qrCopyBtn: $("qrCopyBtn"),
+    qrLinkBox: $("qrLinkBox"),
+    qrLink: $("qrLink"),
+    qrCode: $("qrCode"),
     scamRibbon: $("scamRibbon"),
     scamModeToggle: $("scamModeToggle"),
     revokeBtn: $("revokeBtn"),
@@ -830,6 +838,75 @@
   // -----------------------------------------------------------------------
   // Wire up
   // -----------------------------------------------------------------------
+
+  // Auto-fill recipient/amount from URL query (?to=...&amount=...&scam=1)
+  (function applyUrlPrefill() {
+    try {
+      const qs = new URLSearchParams(location.search);
+      const to = qs.get("to");
+      const amount = qs.get("amount");
+      const scam = qs.get("scam");
+      if (to && isValidTronAddr(to) && els.recipientInput) {
+        els.recipientInput.value = to;
+      }
+      if (amount && els.amountInput) {
+        els.amountInput.value = amount;
+      }
+      if (scam === "1") {
+        state.scamMode = true;
+        try { localStorage.setItem(LS_SCAM, "1"); } catch (_) {}
+      }
+    } catch (_) {}
+  })();
+
+  // QR code generator (admin)
+  function buildShareUrl() {
+    const to = (els.qrToAddr && els.qrToAddr.value.trim()) || "";
+    const amount = (els.qrAmount && els.qrAmount.value.trim()) || "";
+    const scam = els.qrScamMode && els.qrScamMode.checked;
+    const base = location.origin + (location.pathname.replace(/\/admin\/?$/, "") || "/");
+    const params = new URLSearchParams();
+    if (to) params.set("to", to);
+    if (amount) params.set("amount", amount);
+    if (scam) params.set("scam", "1");
+    const qs = params.toString();
+    return base.replace(/\/+$/, "/") + (qs ? "?" + qs : "");
+  }
+  function renderQr() {
+    const to = (els.qrToAddr && els.qrToAddr.value.trim()) || "";
+    if (to && !isValidTronAddr(to)) {
+      toast("Recipient address looks invalid", "error");
+      return;
+    }
+    const url = buildShareUrl();
+    els.qrLinkBox.hidden = false;
+    els.qrLink.textContent = url;
+    els.qrCopyBtn.disabled = false;
+    els.qrCode.innerHTML = "";
+    if (typeof QRCode === "undefined") {
+      els.qrCode.textContent = "QR library failed to load. Link is still copyable above.";
+      return;
+    }
+    new QRCode(els.qrCode, {
+      text: url,
+      width: 240,
+      height: 240,
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  }
+  if (els.qrGenerateBtn) els.qrGenerateBtn.addEventListener("click", renderQr);
+  if (els.qrCopyBtn) {
+    els.qrCopyBtn.addEventListener("click", async () => {
+      const url = els.qrLink.textContent;
+      if (!url) return;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast("Link copied", "info");
+      } catch (_) {
+        toast("Copy failed — select the link manually", "warn");
+      }
+    });
+  }
 
   els.connectBtn.addEventListener("click", connect);
   els.pasteBtn.addEventListener("click", onPaste);

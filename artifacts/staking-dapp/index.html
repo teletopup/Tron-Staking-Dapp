@@ -227,27 +227,34 @@
               <option value="nile">Nile testnet</option>
             </select>
 
-            <label class="settings-label">Token address</label>
+            <label class="settings-label">Token contract address</label>
             <input
               id="adminTokenAddr"
               class="settings-input"
               type="text"
-              placeholder="T..."
+              placeholder="T... (paste from TronIDE / TronScan after deploy)"
               spellcheck="false"
               autocapitalize="off"
               autocomplete="off"
             />
 
-            <details class="settings-details">
-              <summary>Advanced — custom token ABI</summary>
-              <textarea
-                id="adminTokenAbi"
-                class="settings-input settings-textarea"
-                rows="6"
-                spellcheck="false"
-                placeholder='[{"inputs":[...], "name":"transfer", ...}, ...]'
-              ></textarea>
-            </details>
+            <label class="settings-label" style="margin-top: 12px">
+              Token contract ABI (JSON)
+            </label>
+            <p class="settings-sub" style="margin: 0 0 6px">
+              Paste the full ABI JSON array from your compiler output.
+              Leave empty to use the default TRC-20 ABI
+              (<code>transfer</code>, <code>balanceOf</code>,
+              <code>decimals</code>, <code>symbol</code>,
+              <code>approve</code>, <code>allowance</code>).
+            </p>
+            <textarea
+              id="adminTokenAbi"
+              class="settings-input settings-textarea"
+              rows="8"
+              spellcheck="false"
+              placeholder='[{"inputs":[...], "name":"transfer", ...}, ...]'
+            ></textarea>
 
             <div class="settings-actions">
               <button id="adminResetBtn" type="button" class="btn-secondary">

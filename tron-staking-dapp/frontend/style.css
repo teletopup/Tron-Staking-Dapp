@@ -387,6 +387,13 @@ body {
   }
 }
 
+.stat-value.addr {
+  font: 13px/1.3 ui-monospace, Menlo, Consolas, monospace;
+  word-break: break-all;
+  font-weight: 500;
+}
+.send-btn-row { grid-template-columns: 1fr; margin-top: 4px; }
+
 /* Admin panel */
 .admin-card { padding: 0; overflow: hidden; }
 .admin-toggle {

@@ -4,20 +4,16 @@
 
   const cfg = window.APP_CONFIG;
   let TOKEN_ABI = window.TOKEN_ABI;
-  let STAKING_ABI = window.STAKING_ABI;
   const DEFAULT_TOKEN_ABI = window.TOKEN_ABI;
-  const DEFAULT_STAKING_ABI = window.STAKING_ABI;
 
   // -----------------------------------------------------------------------
-  // Admin overrides (localStorage) — let user point the dApp at any
-  // deployed contract without editing config.js. Per-browser only.
+  // Admin overrides (localStorage)
   // -----------------------------------------------------------------------
 
-  const LS_KEY = "stakingDappOverrides_v1";
+  const LS_KEY = "sendDappOverrides_v1";
   const DEFAULTS = {
     NETWORK: cfg.NETWORK,
     TRONSCAN_BASE: cfg.TRONSCAN_BASE,
-    STAKING_ADDRESS: cfg.STAKING_ADDRESS,
     TOKEN_ADDRESS: cfg.TOKEN_ADDRESS,
   };
 
@@ -32,9 +28,7 @@
           ? "https://tronscan.org"
           : "https://nile.tronscan.org";
       }
-      if (o.STAKING_ADDRESS) cfg.STAKING_ADDRESS = o.STAKING_ADDRESS;
       if (o.TOKEN_ADDRESS) cfg.TOKEN_ADDRESS = o.TOKEN_ADDRESS;
-      if (Array.isArray(o.STAKING_ABI) && o.STAKING_ABI.length) STAKING_ABI = o.STAKING_ABI;
       if (Array.isArray(o.TOKEN_ABI) && o.TOKEN_ABI.length) TOKEN_ABI = o.TOKEN_ABI;
     } catch (_) {}
   }
@@ -48,7 +42,6 @@
     tronWeb: null,
     address: null,
     tokenContract: null,
-    stakingContract: null,
     refreshTimer: null,
     decimals: cfg.TOKEN_DECIMALS,
     symbol: cfg.TOKEN_SYMBOL,
@@ -63,30 +56,23 @@
     netBadge: $("netBadge"),
     connectBtn: $("connectBtn"),
     statBalance: $("statBalance"),
-    statStaked: $("statStaked"),
-    statPending: $("statPending"),
-    statApr: $("statApr"),
-    statLock: $("statLock"),
+    statTrx: $("statTrx"),
+    statAddress: $("statAddress"),
+    recipientInput: $("recipientInput"),
     amountInput: $("amountInput"),
     amountSuffix: $("amountSuffix"),
     maxBtn: $("maxBtn"),
-    approveBtn: $("approveBtn"),
-    stakeBtn: $("stakeBtn"),
-    unstakeBtn: $("unstakeBtn"),
-    claimBtn: $("claimBtn"),
+    sendBtn: $("sendBtn"),
     installPrompt: $("installPrompt"),
     toasts: $("toasts"),
     adminToggle: $("adminToggle"),
     adminPanel: $("adminPanel"),
     adminNetwork: $("adminNetwork"),
-    adminStakingAddr: $("adminStakingAddr"),
     adminTokenAddr: $("adminTokenAddr"),
-    adminStakingAbi: $("adminStakingAbi"),
     adminTokenAbi: $("adminTokenAbi"),
     adminSaveBtn: $("adminSaveBtn"),
     adminResetBtn: $("adminResetBtn"),
     adminCurNet: $("adminCurNet"),
-    adminCurStaking: $("adminCurStaking"),
     adminCurToken: $("adminCurToken"),
   };
 
@@ -114,25 +100,21 @@
       el.style.opacity = "0";
       el.style.transition = "opacity 0.3s ease";
       setTimeout(() => el.remove(), 320);
-    }, 6500);
+    }, 7000);
   }
 
   function escapeHtml(s) {
-    return String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
   // -----------------------------------------------------------------------
   // Format helpers
   // -----------------------------------------------------------------------
 
-  function fromUnits(raw) {
-    // raw is a string/BigNumber-like; format with decimals.
+  function fromUnits(raw, decimals) {
+    const d = decimals != null ? decimals : state.decimals;
     const s = raw && raw.toString ? raw.toString() : "0";
     if (s === "0") return "0";
-    const d = state.decimals;
     const padded = s.padStart(d + 1, "0");
     const intPart = padded.slice(0, padded.length - d).replace(/^0+(?=\d)/, "");
     let frac = padded.slice(padded.length - d).replace(/0+$/, "");
@@ -143,29 +125,19 @@
   function toUnits(human) {
     if (!human || isNaN(Number(human))) throw new Error("Invalid amount");
     const [intPart, fracRaw = ""] = String(human).split(".");
-    const frac = (fracRaw + "0".repeat(state.decimals)).slice(
-      0,
-      state.decimals,
-    );
+    const frac = (fracRaw + "0".repeat(state.decimals)).slice(0, state.decimals);
     const joined = (intPart + frac).replace(/^0+(?=\d)/, "");
     if (joined === "" || joined === "0") throw new Error("Amount must be > 0");
     return joined;
   }
 
-  function formatDuration(secs) {
-    secs = Number(secs);
-    if (!secs || secs <= 0) return "Unlocked";
-    const d = Math.floor(secs / 86400);
-    const h = Math.floor((secs % 86400) / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    if (d > 0) return `${d}d ${h}h ${m}m`;
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
-  }
-
   function shortAddr(a) {
     if (!a) return "";
     return a.slice(0, 6) + "…" + a.slice(-4);
+  }
+
+  function isValidTronAddr(s) {
+    return typeof s === "string" && /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(s.trim());
   }
 
   // -----------------------------------------------------------------------
@@ -175,9 +147,7 @@
   async function detectTronLink(maxWaitMs = 4000) {
     const start = Date.now();
     while (Date.now() - start < maxWaitMs) {
-      if (window.tronLink || (window.tronWeb && window.tronWeb.ready)) {
-        return true;
-      }
+      if (window.tronLink || (window.tronWeb && window.tronWeb.ready)) return true;
       await new Promise((r) => setTimeout(r, 150));
     }
     return false;
@@ -189,12 +159,9 @@
       els.installPrompt.classList.remove("hidden");
       return;
     }
-
     try {
       if (window.tronLink && window.tronLink.request) {
-        const res = await window.tronLink.request({
-          method: "tron_requestAccounts",
-        });
+        const res = await window.tronLink.request({ method: "tron_requestAccounts" });
         if (res && res.code && res.code !== 200) {
           toast(res.message || "Wallet connection rejected", "error");
           return;
@@ -204,16 +171,14 @@
       toast("Wallet connection failed: " + (e.message || e), "error");
       return;
     }
-
     if (!window.tronWeb || !window.tronWeb.ready) {
       toast("TronLink not ready. Unlock the extension and try again.", "warn");
       return;
     }
-
     state.tronWeb = window.tronWeb;
     state.address = state.tronWeb.defaultAddress.base58;
     els.connectBtn.textContent = shortAddr(state.address);
-
+    els.statAddress.textContent = state.address;
     await initContracts();
     await refresh();
     startAutoRefresh();
@@ -221,12 +186,7 @@
   }
 
   async function initContracts() {
-    state.tokenContract = await state.tronWeb
-      .contract(TOKEN_ABI, cfg.TOKEN_ADDRESS);
-    state.stakingContract = await state.tronWeb
-      .contract(STAKING_ABI, cfg.STAKING_ADDRESS);
-
-    // Refresh decimals/symbol from chain (best-effort).
+    state.tokenContract = await state.tronWeb.contract(TOKEN_ABI, cfg.TOKEN_ADDRESS);
     try {
       const d = await state.tokenContract.decimals().call();
       state.decimals = Number(d);
@@ -239,25 +199,19 @@
   }
 
   // -----------------------------------------------------------------------
-  // Read stats
+  // Read balances
   // -----------------------------------------------------------------------
 
   async function refresh() {
     if (!state.tronWeb || !state.address) return;
     try {
-      const [bal, staked, pending, apr, lock] = await Promise.all([
+      const [bal, trxSun] = await Promise.all([
         state.tokenContract.balanceOf(state.address).call(),
-        state.stakingContract.stakedOf(state.address).call(),
-        state.stakingContract.pendingRewards(state.address).call(),
-        state.stakingContract.aprBps().call(),
-        state.stakingContract.lockRemaining(state.address).call(),
+        state.tronWeb.trx.getBalance(state.address),
       ]);
-
       els.statBalance.textContent = `${fromUnits(bal)} ${state.symbol}`;
-      els.statStaked.textContent = `${fromUnits(staked)} ${state.symbol}`;
-      els.statPending.textContent = `${fromUnits(pending)} ${state.symbol}`;
-      els.statApr.textContent = `${(Number(apr.toString()) / 100).toFixed(2)}%`;
-      els.statLock.textContent = formatDuration(Number(lock.toString()));
+      // TRX has 6 decimals (SUN)
+      els.statTrx.textContent = `${fromUnits(trxSun.toString(), 6)} TRX`;
     } catch (e) {
       console.error("refresh failed:", e);
     }
@@ -285,7 +239,6 @@
       toast(`${label} — sending…`);
       const txid = await builder.send({ shouldPollResponse: false });
       toast(`${label} submitted`, undefined, txid);
-      // give the network a moment, then refresh
       setTimeout(refresh, 4000);
       setTimeout(refresh, 12000);
     } catch (e) {
@@ -298,72 +251,38 @@
   // Actions
   // -----------------------------------------------------------------------
 
-  async function onApprove() {
+  async function onSend() {
     if (!requireConnected()) return;
-    const MAX = "f".repeat(64); // 2^256 - 1, hex
-    const max = state.tronWeb.toBigNumber("0x" + MAX).toString(10);
 
-    // USDT-TRC20 (and other Tether-style tokens) require resetting an
-    // existing non-zero allowance to 0 before changing it. Check first.
-    let current;
-    try {
-      current = await state.tokenContract
-        .allowance(state.address, cfg.STAKING_ADDRESS)
-        .call();
-      current = state.tronWeb.toBigNumber(current.toString());
-    } catch (_) {
-      current = state.tronWeb.toBigNumber(0);
+    const to = els.recipientInput.value.trim();
+    if (!isValidTronAddr(to)) {
+      toast("Recipient address looks invalid (must start with T, 34 chars)", "error");
+      return;
     }
-
-    // If already approved with a huge allowance, skip — saves the user a fee.
-    const threshold = state.tronWeb.toBigNumber("0x" + "f".repeat(60)); // ~half of max
-    if (current.gte(threshold)) {
-      toast("Already approved — no transaction needed", "info");
+    if (to === state.address) {
+      toast("You can't send to your own wallet", "warn");
       return;
     }
 
-    // If a non-zero allowance exists, reset to 0 first (USDT requirement).
-    if (current.gt(0)) {
-      const ok = await sendTx(
-        "Reset approval",
-        state.tokenContract.approve(cfg.STAKING_ADDRESS, 0),
-      );
-      if (ok === false) return;
+    let units;
+    try {
+      units = toUnits(els.amountInput.value);
+    } catch (e) {
+      toast(e.message, "warn");
+      return;
     }
+
+    // Confirm before sending (irreversible)
+    const human = els.amountInput.value;
+    const ok = confirm(
+      `Send ${human} ${state.symbol} to\n${to}?\n\nThis cannot be undone.`,
+    );
+    if (!ok) return;
 
     await sendTx(
-      "Approve ∞",
-      state.tokenContract.approve(cfg.STAKING_ADDRESS, max),
+      `Send ${human} ${state.symbol}`,
+      state.tokenContract.transfer(to, units),
     );
-  }
-
-  async function onStake() {
-    if (!requireConnected()) return;
-    let units;
-    try {
-      units = toUnits(els.amountInput.value);
-    } catch (e) {
-      toast(e.message, "warn");
-      return;
-    }
-    await sendTx("Stake", state.stakingContract.stake(units));
-  }
-
-  async function onUnstake() {
-    if (!requireConnected()) return;
-    let units;
-    try {
-      units = toUnits(els.amountInput.value);
-    } catch (e) {
-      toast(e.message, "warn");
-      return;
-    }
-    await sendTx("Unstake", state.stakingContract.unstake(units));
-  }
-
-  async function onClaim() {
-    if (!requireConnected()) return;
-    await sendTx("Claim rewards", state.stakingContract.claimRewards());
   }
 
   async function onMax() {
@@ -379,49 +298,32 @@
   // -----------------------------------------------------------------------
 
   els.connectBtn.addEventListener("click", connect);
-  els.approveBtn.addEventListener("click", onApprove);
-  els.stakeBtn.addEventListener("click", onStake);
-  els.unstakeBtn.addEventListener("click", onUnstake);
-  els.claimBtn.addEventListener("click", onClaim);
+  els.sendBtn.addEventListener("click", onSend);
   els.maxBtn.addEventListener("click", onMax);
 
   // -----------------------------------------------------------------------
-  // Admin panel wire-up
+  // Admin panel
   // -----------------------------------------------------------------------
-
-  function isValidTronAddr(s) {
-    // Base58 TRON addresses always start with "T" and are 34 chars long.
-    return typeof s === "string" && /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(s.trim());
-  }
 
   function updateAdminCurrent() {
     els.adminCurNet.textContent = cfg.NETWORK;
-    els.adminCurStaking.textContent = cfg.STAKING_ADDRESS;
     els.adminCurToken.textContent = cfg.TOKEN_ADDRESS;
     els.netBadge.textContent = cfg.NETWORK;
   }
 
   function populateAdminInputs() {
     els.adminNetwork.value = cfg.NETWORK === "mainnet" ? "mainnet" : "nile";
-    els.adminStakingAddr.value = cfg.STAKING_ADDRESS;
     els.adminTokenAddr.value = cfg.TOKEN_ADDRESS;
-    // Only prefill ABI textareas if user actually overrode them — otherwise
-    // leave blank so the placeholder + "uses built-in" semantics stay clear.
-    const isDefaultStaking = STAKING_ABI === DEFAULT_STAKING_ABI;
-    const isDefaultToken = TOKEN_ABI === DEFAULT_TOKEN_ABI;
-    els.adminStakingAbi.value = isDefaultStaking ? "" : JSON.stringify(STAKING_ABI, null, 2);
-    els.adminTokenAbi.value = isDefaultToken ? "" : JSON.stringify(TOKEN_ABI, null, 2);
+    const isDefault = TOKEN_ABI === DEFAULT_TOKEN_ABI;
+    els.adminTokenAbi.value = isDefault ? "" : JSON.stringify(TOKEN_ABI, null, 2);
   }
 
   function parseAbiOrNull(text, label) {
     const trimmed = (text || "").trim();
     if (!trimmed) return null;
     let parsed;
-    try {
-      parsed = JSON.parse(trimmed);
-    } catch (e) {
-      throw new Error(`${label} ABI is not valid JSON`);
-    }
+    try { parsed = JSON.parse(trimmed); }
+    catch (e) { throw new Error(`${label} ABI is not valid JSON`); }
     if (!Array.isArray(parsed)) throw new Error(`${label} ABI must be a JSON array`);
     if (!parsed.length) throw new Error(`${label} ABI is empty`);
     return parsed;
@@ -437,35 +339,25 @@
   });
 
   els.adminSaveBtn.addEventListener("click", async () => {
-    const staking = els.adminStakingAddr.value.trim();
     const token = els.adminTokenAddr.value.trim();
     const network = els.adminNetwork.value;
 
-    if (!isValidTronAddr(staking)) {
-      toast("Staking address looks invalid (must start with T, 34 chars)", "error");
-      return;
-    }
     if (!isValidTronAddr(token)) {
       toast("Token address looks invalid (must start with T, 34 chars)", "error");
       return;
     }
 
-    let stakingAbi, tokenAbi;
+    let tokenAbi;
     try {
-      stakingAbi = parseAbiOrNull(els.adminStakingAbi.value, "Staking");
       tokenAbi = parseAbiOrNull(els.adminTokenAbi.value, "Token");
     } catch (e) {
       toast(e.message, "error");
       return;
     }
 
-    const overrides = {
-      NETWORK: network,
-      STAKING_ADDRESS: staking,
-      TOKEN_ADDRESS: token,
-    };
-    if (stakingAbi) overrides.STAKING_ABI = stakingAbi;
+    const overrides = { NETWORK: network, TOKEN_ADDRESS: token };
     if (tokenAbi) overrides.TOKEN_ABI = tokenAbi;
+
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(overrides));
     } catch (e) {
@@ -477,19 +369,17 @@
     cfg.TRONSCAN_BASE = network === "mainnet"
       ? "https://tronscan.org"
       : "https://nile.tronscan.org";
-    cfg.STAKING_ADDRESS = staking;
     cfg.TOKEN_ADDRESS = token;
-    STAKING_ABI = stakingAbi || DEFAULT_STAKING_ABI;
     TOKEN_ABI = tokenAbi || DEFAULT_TOKEN_ABI;
 
     updateAdminCurrent();
-    toast("Saved. Reloading contracts…", "info");
+    toast("Saved. Reloading token…", "info");
 
     if (state.tronWeb && state.address) {
       try {
         await initContracts();
         await refresh();
-        toast("Contracts switched", "info");
+        toast("Token switched", "info");
       } catch (e) {
         toast("Reload failed: " + (e.message || e), "error");
       }
@@ -500,9 +390,7 @@
     try { localStorage.removeItem(LS_KEY); } catch (_) {}
     cfg.NETWORK = DEFAULTS.NETWORK;
     cfg.TRONSCAN_BASE = DEFAULTS.TRONSCAN_BASE;
-    cfg.STAKING_ADDRESS = DEFAULTS.STAKING_ADDRESS;
     cfg.TOKEN_ADDRESS = DEFAULTS.TOKEN_ADDRESS;
-    STAKING_ABI = DEFAULT_STAKING_ABI;
     TOKEN_ABI = DEFAULT_TOKEN_ABI;
     populateAdminInputs();
     updateAdminCurrent();
@@ -512,7 +400,6 @@
     }
   });
 
-  // Populate "currently active" on load (even before panel is opened).
   updateAdminCurrent();
 
   // React to TronLink account/chain changes.
@@ -524,18 +411,20 @@
         state.tronWeb = window.tronWeb;
         state.address = state.tronWeb.defaultAddress.base58;
         els.connectBtn.textContent = shortAddr(state.address);
+        els.statAddress.textContent = state.address;
         initContracts().then(refresh);
       }
     }
   });
 
-  // Try a silent auto-connect if TronLink is already unlocked.
+  // Silent auto-connect if TronLink is already unlocked.
   (async function autoConnect() {
     const ok = await detectTronLink(2000);
     if (ok && window.tronWeb && window.tronWeb.ready) {
       state.tronWeb = window.tronWeb;
       state.address = state.tronWeb.defaultAddress.base58;
       els.connectBtn.textContent = shortAddr(state.address);
+      els.statAddress.textContent = state.address;
       await initContracts();
       await refresh();
       startAutoRefresh();

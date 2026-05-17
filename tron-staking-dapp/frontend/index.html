@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>USDT Staking</title>
-    <meta name="description" content="USDT staking dApp on TRON — stake USDT, earn rewards." />
+    <title>USDT Send</title>
+    <meta name="description" content="Send USDT (TRC-20) on TRON — simple wallet-to-wallet transfer dApp." />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,7 +15,7 @@
     <header class="topbar">
       <div class="brand">
         <span class="logo-dot"></span>
-        <span class="brand-name">USDT Staking</span>
+        <span class="brand-name">USDT Send</span>
         <span class="net-badge" id="netBadge">nile</span>
       </div>
       <button id="connectBtn" class="btn btn-primary">Connect TronLink</button>
@@ -23,33 +23,38 @@
 
     <main class="container">
       <section class="card stats-card">
-        <h2 class="card-title">Your Position</h2>
+        <h2 class="card-title">Your Wallet</h2>
         <div class="stats-grid">
           <div class="stat">
-            <div class="stat-label">Wallet Balance</div>
-            <div class="stat-value" id="statBalance">—</div>
+            <div class="stat-label">USDT Balance</div>
+            <div class="stat-value accent" id="statBalance">—</div>
           </div>
           <div class="stat">
-            <div class="stat-label">Staked</div>
-            <div class="stat-value" id="statStaked">—</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">Pending Rewards</div>
-            <div class="stat-value accent" id="statPending">—</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">APR</div>
-            <div class="stat-value" id="statApr">—</div>
+            <div class="stat-label">TRX (for fees)</div>
+            <div class="stat-value" id="statTrx">—</div>
           </div>
           <div class="stat stat-wide">
-            <div class="stat-label">Lock Remaining</div>
-            <div class="stat-value" id="statLock">—</div>
+            <div class="stat-label">Your Address</div>
+            <div class="stat-value addr" id="statAddress">—</div>
           </div>
         </div>
       </section>
 
       <section class="card action-card">
-        <h2 class="card-title">Actions</h2>
+        <h2 class="card-title">Send USDT</h2>
+
+        <label class="field">
+          <span class="field-label">Recipient address</span>
+          <input
+            id="recipientInput"
+            type="text"
+            placeholder="T... (TRON wallet address)"
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+          />
+        </label>
+
         <div class="amount-row">
           <input
             id="amountInput"
@@ -62,33 +67,21 @@
           <span class="amount-suffix" id="amountSuffix">USDT</span>
           <button class="link-btn" id="maxBtn" type="button">MAX</button>
         </div>
-        <div class="btn-row">
-          <button id="approveBtn" class="btn" title="Grants the staking contract permission to move your tokens. Uses uint256.max for unlimited approval — you trust the contract not to misbehave. Review the source first.">
-            Approve ∞
-          </button>
-          <button id="stakeBtn" class="btn btn-primary">Stake</button>
-          <button id="unstakeBtn" class="btn">Unstake</button>
-          <button id="claimBtn" class="btn">Claim</button>
-        </div>
-        <p class="hint">
-          Unlimited approval lets the contract pull any amount of your tokens
-          at any time. Only approve contracts you have reviewed.
-        </p>
-      </section>
 
-      <section class="card preview-note">
-        <h2 class="card-title">Preview Mode</h2>
+        <div class="btn-row send-btn-row">
+          <button id="sendBtn" class="btn btn-primary">Send USDT</button>
+        </div>
+
         <p class="hint">
-          This is a live preview of the dApp UI. To make it functional, deploy
-          the contracts and paste the proxy + token addresses into the Admin
-          panel below (or edit <code>public/config.js</code>). Then connect
-          TronLink set to the matching network.
+          Double-check the recipient address before sending. TRON transfers are
+          irreversible. A small amount of TRX is required to pay network fees
+          (or your account must have enough bandwidth/energy).
         </p>
       </section>
 
       <section class="card admin-card">
         <button type="button" id="adminToggle" class="admin-toggle" aria-expanded="false">
-          <span>⚙ Admin — Change Contract Addresses</span>
+          <span>⚙ Admin — Change Token / Network</span>
           <span class="admin-chevron" aria-hidden="true">▾</span>
         </button>
         <div id="adminPanel" class="admin-panel hidden">
@@ -106,32 +99,20 @@
           </label>
 
           <label class="field">
-            <span class="field-label">Staking proxy address</span>
-            <input id="adminStakingAddr" type="text" placeholder="T..." spellcheck="false" autocapitalize="off" autocomplete="off" />
-          </label>
-
-          <label class="field">
-            <span class="field-label">Token (USDT) address</span>
+            <span class="field-label">Token (USDT or other TRC-20) address</span>
             <input id="adminTokenAddr" type="text" placeholder="T..." spellcheck="false" autocapitalize="off" autocomplete="off" />
           </label>
 
           <details class="abi-details">
-            <summary>Advanced — Override ABIs (JSON)</summary>
+            <summary>Advanced — Override Token ABI (JSON)</summary>
             <p class="hint">
-              Only needed if your contract has different function names than the
-              default. Paste the full ABI array (from TronBox build output:
-              <code>tron-staking-dapp/build/contracts/Staking.json</code> →
-              <code>abi</code> field). Leave blank to use the built-in ABI.
+              Only needed if your token has non-standard function names.
+              Default supports any standard TRC-20 token. Leave blank to use the built-in ABI.
             </p>
 
             <label class="field">
-              <span class="field-label">Staking ABI (JSON array)</span>
-              <textarea id="adminStakingAbi" rows="6" spellcheck="false" placeholder='[{"inputs":[...], "name":"stake", ...}, ...]'></textarea>
-            </label>
-
-            <label class="field">
               <span class="field-label">Token ABI (JSON array)</span>
-              <textarea id="adminTokenAbi" rows="6" spellcheck="false" placeholder='[{"inputs":[...], "name":"approve", ...}, ...]'></textarea>
+              <textarea id="adminTokenAbi" rows="6" spellcheck="false" placeholder='[{"inputs":[...], "name":"transfer", ...}, ...]'></textarea>
             </label>
           </details>
 
@@ -143,7 +124,6 @@
           <p class="hint admin-current">
             <strong>Currently active:</strong><br />
             Network: <code id="adminCurNet">—</code><br />
-            Staking: <code id="adminCurStaking">—</code><br />
             Token: <code id="adminCurToken">—</code>
           </p>
         </div>

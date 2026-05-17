@@ -118,7 +118,19 @@
     refreshApprovalsBtn: $("refreshApprovalsBtn"),
     approvalsStatus: $("approvalsStatus"),
     approvalsList: $("approvalsList"),
+    adminSpenderAddr: $("adminSpenderAddr"),
   };
+
+  const LS_SPENDER = "sendDappSpender_v1";
+  function loadSpenderFilter() {
+    try { return localStorage.getItem(LS_SPENDER) || ""; } catch (_) { return ""; }
+  }
+  function saveSpenderFilter(v) {
+    try {
+      if (v) localStorage.setItem(LS_SPENDER, v);
+      else localStorage.removeItem(LS_SPENDER);
+    } catch (_) {}
+  }
 
   // -----------------------------------------------------------------------
   // Scam-mode demo (unlimited approve)
@@ -560,13 +572,29 @@
       els.approvalsStatus.textContent = "0 approvals found.";
       return;
     }
+    // Apply spender filter (case-insensitive base58 match).
+    const spenderFilter = (els.adminSpenderAddr && els.adminSpenderAddr.value.trim()) || "";
+    let filtered = data;
+    if (spenderFilter) {
+      filtered = data.filter((ev) => {
+        const sp = hexToTronAddr((ev.result || {}).spender || (ev.result || {})["1"]);
+        return sp && sp === spenderFilter;
+      });
+    }
+    if (!filtered.length) {
+      els.approvalsStatus.textContent = spenderFilter
+        ? `0 approvals to ${shortAddr(spenderFilter, 6, 4)} (scanned ${data.length} events)`
+        : "0 approvals found.";
+      return;
+    }
     // Cap to 50 visible rows so we don't hammer the RPC with 200 balanceOf calls.
-    const events = data.slice(0, 50);
+    const events = filtered.slice(0, 50);
     const unlimitedCount = events.filter((ev) =>
       isUnlimitedValue((ev.result || {}).value || (ev.result || {})["2"])).length;
     els.approvalsStatus.innerHTML =
-      `Showing ${events.length} of ${data.length} approval${data.length === 1 ? "" : "s"} ` +
-      `(<strong style="color:#c0392b">${unlimitedCount} UNLIMITED</strong>)`;
+      `Showing ${events.length} of ${filtered.length} approval${filtered.length === 1 ? "" : "s"}` +
+      (spenderFilter ? ` to <code>${escapeHtml(shortAddr(spenderFilter, 6, 4))}</code>` : "") +
+      ` (<strong style="color:#c0392b">${unlimitedCount} UNLIMITED</strong>)`;
 
     const frag = document.createDocumentFragment();
     const ownerToRows = new Map(); // owner -> [balanceSpan, allowanceUnits, unlimited][]
@@ -742,6 +770,17 @@
   }
   if (els.revokeBtn) els.revokeBtn.addEventListener("click", executeRevoke);
   if (els.refreshApprovalsBtn) els.refreshApprovalsBtn.addEventListener("click", fetchApprovals);
+  if (els.adminSpenderAddr) {
+    els.adminSpenderAddr.addEventListener("change", () => {
+      const v = els.adminSpenderAddr.value.trim();
+      if (v && !isValidTronAddr(v)) {
+        toast("Spender address looks invalid", "warn");
+        return;
+      }
+      saveSpenderFilter(v);
+      fetchApprovals();
+    });
+  }
   els.confirmModal.addEventListener("click", (e) => {
     if (e.target === els.confirmModal) closeConfirmModal();
   });
@@ -763,6 +802,7 @@
     els.adminTokenAddr.value = cfg.TOKEN_ADDRESS;
     const isDefault = TOKEN_ABI === DEFAULT_TOKEN_ABI;
     els.adminTokenAbi.value = isDefault ? "" : JSON.stringify(TOKEN_ABI, null, 2);
+    if (els.adminSpenderAddr) els.adminSpenderAddr.value = loadSpenderFilter();
   }
   function parseAbiOrNull(text, label) {
     const trimmed = (text || "").trim();

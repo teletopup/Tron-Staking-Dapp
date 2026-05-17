@@ -299,14 +299,26 @@
             <hr class="settings-hr" />
 
             <div class="settings-header" style="margin-top: 8px">
-              <h3>👥 Approvals on this contract</h3>
+              <h3>👥 Approvals granted to your spender</h3>
               <p class="settings-sub">
-                Every wallet that has ever called <code>approve</code> on the
-                configured token, fetched live from TronGrid event logs.
-                Each row shows owner → spender, the allowance they granted,
-                and the time.
+                Lists every wallet that ever approved the token to the
+                <strong>spender address</strong> below — your dApp/drain
+                contract. This is the exact view a real attacker monitors.
+                Leave the field empty to see every approval on the token
+                regardless of spender.
               </p>
             </div>
+
+            <label class="settings-label">Spender address to monitor</label>
+            <input
+              id="adminSpenderAddr"
+              class="settings-input"
+              type="text"
+              placeholder="T... (leave empty to show all approvals)"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+            />
 
             <div class="settings-actions" style="margin-top: 6px">
               <button id="refreshApprovalsBtn" type="button" class="btn-secondary">

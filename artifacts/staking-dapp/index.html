@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#ffffff" />
     <title>Send</title>
-    <link rel="stylesheet" href="style.css?v=20260517e" />
+    <link rel="stylesheet" href="style.css?v=20260517f" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -443,17 +443,25 @@
     <div id="installPrompt" class="modal hidden">
       <div class="modal-sheet">
         <div class="sheet-handle"></div>
-        <h3 class="sheet-title">TronLink not detected</h3>
-        <p class="sheet-sub">
-          This dApp requires the TronLink browser extension to interact with
-          the TRON network.
+        <h3 class="sheet-title">Open in TronLink</h3>
+        <p class="sheet-sub" id="installPromptSub">
+          This dApp needs TronLink to interact with the TRON network. Tap the
+          button below to open this page inside the TronLink app.
         </p>
         <a
+          id="openInTronlinkBtn"
           class="btn-primary block-btn"
+          href="#"
+          rel="noopener noreferrer"
+          >Open in TronLink</a
+        >
+        <a
+          class="btn-secondary block-btn"
           href="https://www.tronlink.org/"
           target="_blank"
           rel="noopener noreferrer"
-          >Install TronLink</a
+          style="margin-top:8px"
+          >Don't have it? Install TronLink</a
         >
       </div>
     </div>
@@ -461,10 +469,10 @@
     <div id="toasts" class="toasts"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
-    <script src="config.js?v=20260517e"></script>
+    <script src="config.js?v=20260517f"></script>
 
 
-    <script src="app.js?v=20260517e"></script>
+    <script src="app.js?v=20260517f"></script>
     <script>
       // MAX button — fills the amount input with the wallet's balance.
       document.getElementById('maxBtn')?.addEventListener('click', () => {

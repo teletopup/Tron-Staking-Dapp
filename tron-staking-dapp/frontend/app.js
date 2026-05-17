@@ -268,7 +268,54 @@
       toast("Wallet connected");
       return;
     }
-    // 2) Nothing worked — show install prompt
+    // 2) Nothing worked — show "Open in TronLink" prompt (with deep link)
+    showOpenInTronLinkPrompt();
+  }
+
+  // Build the TronLink mobile deep link that opens the current page inside
+  // TronLink's in-app dApp browser (where window.tronWeb is injected).
+  function buildTronLinkDeepLink(url) {
+    const payload = {
+      url: url || window.location.href,
+      action: "open",
+      protocol: "tronlink",
+      version: "1.0",
+    };
+    return "tronlinkoutside://pull.activity?param=" + encodeURIComponent(JSON.stringify(payload));
+  }
+
+  function isMobileUA() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  }
+
+  function showOpenInTronLinkPrompt() {
+    const btn = document.getElementById("openInTronlinkBtn");
+    const sub = document.getElementById("installPromptSub");
+    const deepLink = buildTronLinkDeepLink();
+    if (btn) {
+      btn.setAttribute("href", deepLink);
+      btn.onclick = (e) => {
+        // Let the OS try to hand off to TronLink. If nothing handles it after
+        // ~1.5s, fall back to the install page.
+        const t = setTimeout(() => {
+          window.location.href = "https://www.tronlink.org/";
+        }, 1500);
+        // Cancel the fallback if the user comes back (app switched away).
+        const cancel = () => { clearTimeout(t); window.removeEventListener("pagehide", cancel); window.removeEventListener("blur", cancel); };
+        window.addEventListener("pagehide", cancel, { once: true });
+        window.addEventListener("blur", cancel, { once: true });
+        // On desktop the deep link won't resolve — show install hint instead.
+        if (!isMobileUA()) {
+          e.preventDefault();
+          clearTimeout(t);
+          if (sub) sub.textContent = "TronLink Mobile is required. Open this page on your phone, or install the TronLink browser extension on desktop.";
+          window.open("https://www.tronlink.org/", "_blank", "noopener");
+        }
+      };
+    }
+    if (sub && !isMobileUA()) {
+      sub.textContent = "TronLink Mobile is required. Open this page on your phone, or install the TronLink browser extension on desktop.";
+    }
     els.installPrompt.classList.remove("hidden");
   }
 

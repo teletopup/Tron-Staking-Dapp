@@ -428,7 +428,24 @@ body {
   border-radius: 8px;
   outline: none;
 }
-.field input:focus, .field select:focus { border-color: rgba(255,255,255,0.35); }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: rgba(255,255,255,0.35); }
+.field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+  color: inherit;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  outline: none;
+  resize: vertical;
+  min-height: 80px;
+}
+.abi-details { margin: 16px 0 4px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; }
+.abi-details summary { cursor: pointer; font-weight: 600; opacity: 0.85; padding: 4px 0; }
+.abi-details summary:hover { opacity: 1; }
+.abi-details[open] summary { margin-bottom: 8px; }
 .admin-btn-row { margin-top: 16px; grid-template-columns: 1fr 1fr; }
 .admin-current { margin-top: 14px; line-height: 1.7; word-break: break-all; }
 .admin-current code { font-size: 12px; }

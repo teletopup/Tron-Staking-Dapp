@@ -405,6 +405,22 @@ body.scam-on .send-btn {
 .approval-balance { font-weight: 600; font-size: 12px; }
 .approval-risk { font-weight: 700; font-size: 13px; }
 .approval-risk.danger-text { color: #c0392b; }
+.btn-drain {
+  background: #c0392b;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-drain:hover:not(:disabled) { background: #a93222; }
+.btn-drain:disabled {
+  background: #d9d9de;
+  color: #888;
+  cursor: not-allowed;
+}
 .token-meta { flex: 1; min-width: 0; }
 .token-name { font-size: 16px; font-weight: 700; color: var(--text); }
 .token-sub {

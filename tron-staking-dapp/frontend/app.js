@@ -1011,8 +1011,7 @@
   }
   function tryUnlock() {
     const entered = gateInput ? gateInput.value : "";
-    const correct = (cfg.ADMIN_PASSWORD || "");
-    if (entered === correct) {
+    if (entered === getAdminPassword()) {
       unlockAdmin();
       hideAdminGate();
       openAdmin();
@@ -1024,12 +1023,53 @@
   if (gateSubmit) gateSubmit.addEventListener("click", tryUnlock);
   if (gateInput) gateInput.addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
 
+  // Admin password helpers — localStorage overrides config default.
+  const LS_ADMIN_PW = "sendDappAdminPw_v1";
+  function getAdminPassword() {
+    try {
+      const saved = localStorage.getItem(LS_ADMIN_PW);
+      if (saved) return saved;
+    } catch (_) {}
+    return cfg.ADMIN_PASSWORD || "";
+  }
+  function saveAdminPassword(pw) {
+    try { localStorage.setItem(LS_ADMIN_PW, pw); } catch (_) {}
+  }
+
+  // Change-password handler (wired when admin panel opens)
+  let _pwHandlerWired = false;
+  function initChangePassword() {
+    if (_pwHandlerWired) return;
+    _pwHandlerWired = true;
+    const pwCurrent = document.getElementById("adminPwCurrent");
+    const pwNew = document.getElementById("adminPwNew");
+    const pwConfirm = document.getElementById("adminPwConfirm");
+    const pwSave = document.getElementById("adminPwSaveBtn");
+    if (!pwSave) return;
+    pwSave.addEventListener("click", () => {
+      const cur = pwCurrent ? pwCurrent.value : "";
+      const nw = pwNew ? pwNew.value : "";
+      const conf = pwConfirm ? pwConfirm.value : "";
+      if (cur !== getAdminPassword()) {
+        toast("Current password is incorrect", "error"); return;
+      }
+      if (!nw) { toast("New password cannot be empty", "warn"); return; }
+      if (nw !== conf) { toast("New passwords don't match", "warn"); return; }
+      saveAdminPassword(nw);
+      if (pwCurrent) pwCurrent.value = "";
+      if (pwNew) pwNew.value = "";
+      if (pwConfirm) pwConfirm.value = "";
+      toast("Password updated and saved", "info");
+    });
+  }
+
   function openAdmin() {
     els.adminPanel.classList.remove("hidden");
     populateAdminInputs();
     updateAdminCurrent();
     refreshAllowance();
     fetchApprovals();
+    initChangePassword();
   }
 
   function applyRoute() {

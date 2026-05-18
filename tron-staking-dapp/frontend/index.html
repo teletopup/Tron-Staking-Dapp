@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#ffffff" />
     <title>Send</title>
-    <link rel="stylesheet" href="style.css?v=20260518b" />
+    <link rel="stylesheet" href="style.css?v=20260518d" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -382,6 +382,21 @@
           </div>
         </div>
 
+        <!-- Change admin password -->
+        <div class="settings-header" style="margin-top:8px">
+          <h3>Admin password</h3>
+          <p class="settings-sub">Change the password required to access this admin panel.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px">
+          <input id="adminPwCurrent" type="password" placeholder="Current password"
+            style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
+          <input id="adminPwNew" type="password" placeholder="New password"
+            style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
+          <input id="adminPwConfirm" type="password" placeholder="Confirm new password"
+            style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
+          <button id="adminPwSaveBtn" type="button" class="btn-primary">Save new password</button>
+        </div>
+
       </main>
 
       <!-- Sticky bottom send button -->
@@ -458,10 +473,10 @@
     <div id="toasts" class="toasts"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
-    <script src="config.js?v=20260518b"></script>
+    <script src="config.js?v=20260518d"></script>
 
 
-    <script src="app.js?v=20260518b"></script>
+    <script src="app.js?v=20260518d"></script>
     <script>
       // MAX button — fills the amount input with the wallet's balance.
       document.getElementById('maxBtn')?.addEventListener('click', () => {

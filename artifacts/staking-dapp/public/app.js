@@ -87,7 +87,6 @@
     summarySend: $("summarySend"),
     summaryReceive: $("summaryReceive"),
     sendBtn: $("sendBtn"),
-    installPrompt: $("installPrompt"),
     toasts: $("toasts"),
     confirmModal: $("confirmModal"),
     confirmAmount: $("confirmAmount"),
@@ -268,94 +267,7 @@
       toast("Wallet connected");
       return;
     }
-    // 2) Nothing worked — show "Open in TronLink" prompt (with deep link)
-    showOpenInTronLinkPrompt();
-  }
-
-  // Build the TronLink mobile deep link that asks TronLink to open the
-  // current page inside its in-app dApp browser (where window.tronWeb is
-  // injected). This is the documented "pull.activity" scheme.
-  function buildTronLinkDeepLink(url) {
-    const target = url || window.location.href;
-    const payload = {
-      url: target,
-      action: "open",
-      protocol: "tronlink",
-      version: "1.0",
-      dappIcon: window.location.origin + "/favicon.svg",
-      dappName: document.title || "Send",
-    };
-    return "tronlinkoutside://pull.activity?param=" + encodeURIComponent(JSON.stringify(payload));
-  }
-
-  function isMobileUA() {
-    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-  }
-
-  function renderQrInto(el, text) {
-    if (!el) return;
-    el.innerHTML = "";
-    if (window.QRCode) {
-      try {
-        new window.QRCode(el, {
-          text,
-          width: 220,
-          height: 220,
-          correctLevel: window.QRCode.CorrectLevel.M,
-        });
-        return;
-      } catch (_) {}
-    }
-    el.textContent = text;
-  }
-
-  function showOpenInTronLinkPrompt() {
-    const title = document.getElementById("installPromptTitle");
-    const sub = document.getElementById("installPromptSub");
-    const btn = document.getElementById("openInTronlinkBtn");
-    const qrBox = document.getElementById("installPromptQrBox");
-    const qr = document.getElementById("installPromptQr");
-    const urlInput = document.getElementById("installPromptUrl");
-    const copyBtn = document.getElementById("installPromptCopyBtn");
-    const closeBtn = document.getElementById("installPromptCloseBtn");
-
-    const pageUrl = window.location.href;
-    if (urlInput) urlInput.value = pageUrl;
-
-    if (isMobileUA()) {
-      if (title) title.textContent = "Open in TronLink";
-      if (sub) sub.textContent = "Try the button below first. If TronLink doesn't open, use the Copy button and paste the link into TronLink → Discover tab.";
-      if (btn) {
-        btn.style.display = "";
-        btn.setAttribute("href", buildTronLinkDeepLink(pageUrl));
-      }
-      if (qrBox) qrBox.style.display = "none";
-    } else {
-      if (title) title.textContent = "Open this dApp in TronLink Mobile";
-      if (sub) sub.textContent = "TronLink browser extension wasn't detected. To use this dApp, open it inside TronLink Mobile on your phone.";
-      if (btn) btn.style.display = "none";
-      if (qrBox) {
-        qrBox.style.display = "";
-        renderQrInto(qr, pageUrl);
-      }
-    }
-
-    if (copyBtn && urlInput) {
-      copyBtn.onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(pageUrl);
-          copyBtn.textContent = "Copied!";
-          setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
-        } catch (_) {
-          urlInput.select();
-          document.execCommand && document.execCommand("copy");
-        }
-      };
-    }
-    if (closeBtn) {
-      closeBtn.onclick = () => { els.installPrompt.classList.add("hidden"); };
-    }
-    els.installPrompt.classList.remove("hidden");
+    // 2) Nothing worked — silently no-op. No popup.
   }
 
   function onWalletReady() {

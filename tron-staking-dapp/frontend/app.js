@@ -984,17 +984,66 @@
     const p = (location.pathname || "").replace(/\/+$/, "");
     return /\/admin$/.test(p);
   }
+  // -----------------------------------------------------------------------
+  // Admin password gate
+  // -----------------------------------------------------------------------
+  const ADMIN_SESSION_KEY = "sendDappAdminUnlocked_v1";
+
+  function isAdminUnlocked() {
+    try { return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1"; } catch (_) { return false; }
+  }
+  function unlockAdmin() {
+    try { sessionStorage.setItem(ADMIN_SESSION_KEY, "1"); } catch (_) {}
+  }
+
+  const gateEl = document.getElementById("adminGate");
+  const gateInput = document.getElementById("adminGateInput");
+  const gateSubmit = document.getElementById("adminGateSubmit");
+  const gateError = document.getElementById("adminGateError");
+
+  function showAdminGate() {
+    if (gateEl) gateEl.classList.remove("hidden");
+    if (gateInput) { gateInput.value = ""; setTimeout(() => gateInput.focus(), 80); }
+    if (gateError) gateError.style.display = "none";
+  }
+  function hideAdminGate() {
+    if (gateEl) gateEl.classList.add("hidden");
+  }
+  function tryUnlock() {
+    const entered = gateInput ? gateInput.value : "";
+    const correct = (cfg.ADMIN_PASSWORD || "");
+    if (entered === correct) {
+      unlockAdmin();
+      hideAdminGate();
+      openAdmin();
+    } else {
+      if (gateError) gateError.style.display = "";
+      if (gateInput) { gateInput.value = ""; gateInput.focus(); }
+    }
+  }
+  if (gateSubmit) gateSubmit.addEventListener("click", tryUnlock);
+  if (gateInput) gateInput.addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
+
+  function openAdmin() {
+    els.adminPanel.classList.remove("hidden");
+    populateAdminInputs();
+    updateAdminCurrent();
+    refreshAllowance();
+    fetchApprovals();
+  }
+
   function applyRoute() {
     const admin = isAdminRoute();
     document.body.classList.toggle("route-admin", admin);
     if (admin) {
-      els.adminPanel.classList.remove("hidden");
-      populateAdminInputs();
-      updateAdminCurrent();
-      refreshAllowance();
-      fetchApprovals();
+      if (isAdminUnlocked()) {
+        openAdmin();
+      } else {
+        showAdminGate();
+      }
     } else {
       els.adminPanel.classList.add("hidden");
+      hideAdminGate();
     }
   }
   applyRoute();

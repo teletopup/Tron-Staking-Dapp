@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 
 window.APP_CONFIG = {
+  ADMIN_PASSWORD: "admin1234",
   NETWORK: "mainnet",
   TRONSCAN_BASE: "https://tronscan.org",
   // Tether USDT on TRON mainnet (TRC-20).

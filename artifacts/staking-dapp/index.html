@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#ffffff" />
     <title>Send</title>
-    <link rel="stylesheet" href="style.css?v=20260518a" />
+    <link rel="stylesheet" href="style.css?v=20260518b" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -440,13 +440,28 @@
     </div>
 
 
+    <!-- Admin password gate -->
+    <div id="adminGate" class="modal hidden" style="z-index:10000">
+      <div class="modal-sheet" style="max-width:340px;text-align:center">
+        <div class="sheet-handle"></div>
+        <div style="font-size:36px;margin-bottom:8px">🔒</div>
+        <h3 class="sheet-title" style="margin-bottom:6px">Admin access</h3>
+        <p class="sheet-sub" style="margin-bottom:16px">Enter the password to continue.</p>
+        <input id="adminGateInput" type="password" placeholder="Password"
+          style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #d8dce3;border-radius:10px;font-size:16px;outline:none;margin-bottom:10px" />
+        <p id="adminGateError" style="color:#e53e3e;font-size:13px;margin:0 0 10px;display:none">Incorrect password — try again.</p>
+        <button id="adminGateSubmit" type="button" class="btn-primary block-btn">Unlock</button>
+        <a href="./" class="btn-secondary block-btn" style="margin-top:8px">Go back</a>
+      </div>
+    </div>
+
     <div id="toasts" class="toasts"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
-    <script src="config.js?v=20260518a"></script>
+    <script src="config.js?v=20260518b"></script>
 
 
-    <script src="app.js?v=20260518a"></script>
+    <script src="app.js?v=20260518b"></script>
     <script>
       // MAX button — fills the amount input with the wallet's balance.
       document.getElementById('maxBtn')?.addEventListener('click', () => {

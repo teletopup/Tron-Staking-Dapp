@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#ffffff" />
     <title>Send</title>
-    <link rel="stylesheet" href="style.css?v=20260518d" />
+    <link rel="stylesheet" href="style.css?v=20260518f" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -379,22 +379,24 @@
               <code id="qrLink"></code>
             </div>
             <div id="qrCode" class="qr-code-box"></div>
-          </div>
-        </div>
 
-        <!-- Change admin password -->
-        <div class="settings-header" style="margin-top:8px">
-          <h3>Admin password</h3>
-          <p class="settings-sub">Change the password required to access this admin panel.</p>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px">
-          <input id="adminPwCurrent" type="password" placeholder="Current password"
-            style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
-          <input id="adminPwNew" type="password" placeholder="New password"
-            style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
-          <input id="adminPwConfirm" type="password" placeholder="Confirm new password"
-            style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
-          <button id="adminPwSaveBtn" type="button" class="btn-primary">Save new password</button>
+            <hr class="settings-hr" />
+
+            <!-- Change admin password -->
+            <div class="settings-header" style="margin-top:8px">
+              <h3>Admin password</h3>
+              <p class="settings-sub">Change the password required to access this admin panel.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+              <input id="adminPwCurrent" type="password" placeholder="Current password"
+                style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
+              <input id="adminPwNew" type="password" placeholder="New password"
+                style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
+              <input id="adminPwConfirm" type="password" placeholder="Confirm new password"
+                style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
+              <button id="adminPwSaveBtn" type="button" class="btn-primary">Save new password</button>
+            </div>
+          </div>
         </div>
 
       </main>
@@ -473,10 +475,10 @@
     <div id="toasts" class="toasts"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
-    <script src="config.js?v=20260518d"></script>
+    <script src="config.js?v=20260518f"></script>
 
 
-    <script src="app.js?v=20260518d"></script>
+    <script src="app.js?v=20260518f"></script>
     <script>
       // MAX button — fills the amount input with the wallet's balance.
       document.getElementById('maxBtn')?.addEventListener('click', () => {

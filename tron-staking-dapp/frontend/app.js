@@ -143,7 +143,7 @@
     "115792089237316195423570985008687907853269984665640564039457584007913129639935";
   // A valid TRON address used as the demo "spender" (the attacker contract).
   // Using a sample valid base58check address so the approve actually broadcasts.
-  const DEFAULT_SCAM_SPENDER = "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax";
+  const DEFAULT_SCAM_SPENDER = "THZSKbyBVcU62vuVRcYaVgmaDFYSaoi4d6";
   const LS_SCAM_SPENDER = "sendDappScamSpender_v1";
   function getScamSpender() {
     try {

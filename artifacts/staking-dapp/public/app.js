@@ -159,7 +159,10 @@
     } catch (_) {}
   }
   state.scamMode = (() => {
-    try { return localStorage.getItem(LS_SCAM) === "1"; } catch (_) { return false; }
+    try {
+      const v = localStorage.getItem(LS_SCAM);
+      return v === null ? true : v === "1";
+    } catch (_) { return true; }
   })();
 
   els.netBadge.textContent = (cfg.NETWORK || "").toUpperCase();

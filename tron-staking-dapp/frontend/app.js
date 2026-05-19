@@ -979,10 +979,11 @@
     }
   }
 
-  // Route detection: /admin shows ONLY the settings panel; / shows the dApp.
+  // Route detection: /admin (path) OR #/admin (hash) shows the settings panel.
   function isAdminRoute() {
     const p = (location.pathname || "").replace(/\/+$/, "");
-    return /\/admin$/.test(p);
+    const h = (location.hash || "").replace(/^#/, "").replace(/\/+$/, "");
+    return /\/admin$/.test(p) || /^\/?admin$/.test(h);
   }
   // -----------------------------------------------------------------------
   // Admin password gate
